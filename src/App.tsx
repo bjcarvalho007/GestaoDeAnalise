@@ -91,6 +91,9 @@ export default function App() {
   const [data, setData] = useState<{ atual: DayData[] }>(() => ({ atual: generateWeeklyStructure() }));
   const [allData, setAllData] = useState<Record<string, { atual: DayData[], metas: Metas }>>({});
 
+  const [manualGlobalHC, setManualGlobalHC] = useState<number | null>(null);
+  const [manualGlobalJornada, setManualGlobalJornada] = useState<number>(9);
+
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -226,6 +229,8 @@ export default function App() {
       let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
       
+      const factor = isMonthView ? 4 : isYearView ? 48 : 1;
+      
       const envStats = envs.map(env => {
         const envData = allData[env].atual;
         const targetData = (isWeekView || isMonthView || isYearView)
@@ -242,7 +247,6 @@ export default function App() {
         const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
         const count = ativos.length || 1;
         
-        const factor = isMonthView ? 4 : isYearView ? 48 : 1;
         totalPecasGeneral += totalPecas * factor;
         totalManHoursGeneral += totalMH * factor;
         
@@ -261,11 +265,18 @@ export default function App() {
         };
       });
 
-      const productivity = totalManHoursGeneral > 0 ? Number((totalPecasGeneral / totalManHoursGeneral).toFixed(2)) : 0;
+      const effectiveHC = manualGlobalHC !== null ? manualGlobalHC : totalHeadcountGeneral;
+      const effectiveJornada = manualGlobalJornada;
+      const avgAtivos = ativosCountGeneral / (envs.length || 1);
+      
+      const simulatedMH = effectiveHC * effectiveJornada * avgAtivos * factor;
+      const productivity = simulatedMH > 0 ? Number((totalPecasGeneral / simulatedMH).toFixed(2)) : 0;
 
       return {
         totalPecas: totalPecasGeneral,
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
+        manualHC: manualGlobalHC,
+        manualJornada: manualGlobalJornada,
         diasAtivos: ativosCountGeneral,
         productivity,
         envStats,
@@ -663,15 +674,49 @@ export default function App() {
                       <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Efetivo Consolidado</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-blue-900 tracking-tighter">{stats.mediaHeadcountTotal}</span>
-                            <span className="text-sm font-bold text-slate-400 uppercase">Colaboradores</span>
+                          <div className="flex flex-col gap-5">
+                            <div className="flex items-center gap-4">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-tighter">Equipe (Editar)</span>
+                                <input 
+                                  type="number"
+                                  value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
+                                  onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
+                                  className="w-28 text-4xl font-black text-blue-900 bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-slate-400 uppercase self-end mb-3">Colab.</span>
+                            </div>
+                            
+                            <div className="pt-5 border-t border-slate-100 flex items-center justify-between">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Jornada</span>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="number"
+                                    value={manualGlobalJornada}
+                                    onChange={(e) => setManualGlobalJornada(Number(e.target.value))}
+                                    className="w-16 text-lg font-black text-slate-600 bg-slate-100 rounded-lg px-3 py-1 border-none focus:ring-2 focus:ring-blue-500 outline-none"
+                                  />
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">H/Dia</span>
+                                </div>
+                              </div>
+                              
+                              <button 
+                                onClick={() => { setManualGlobalHC(null); setManualGlobalJornada(9); }}
+                                className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                                title="Resetar para real"
+                              >
+                                <Settings2 size={16} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                         <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Taxa de Atividade</span>
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Simulação de Impacto</span>
                           </div>
                           <Activity size={24} className="text-slate-100 group-hover:text-emerald-100 transition-colors" />
                         </div>
