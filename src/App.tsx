@@ -17,6 +17,7 @@ import {
   CalendarCheck, 
   Settings2, 
   ArrowRightLeft, 
+  ShieldCheck,
   Menu, 
   X, 
   Check, 
@@ -362,7 +363,7 @@ export default function App() {
                 {[
                   { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-indigo-600', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
                   { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
-                  { id: 'geral', label: 'Gestão Geral', icon: BarChart2, color: 'bg-blue-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
+                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-indigo-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
                 ].map(env => (
                   <button
                     key={env.id}
@@ -436,12 +437,12 @@ export default function App() {
                   onClick={() => setSelectedEnv(null)}
                   className="flex items-center gap-3 group text-left"
                 >
-                  <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
-                    <ArrowRightLeft className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:rotate-6 transition-all duration-500">
+                    <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-white font-black tracking-tight uppercase text-xl leading-none">Gestão integrada</span>
-                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-1.5 font-mono">
+                    <span className="text-white font-black tracking-tight uppercase text-lg sm:text-xl leading-none">Gestão integrada</span>
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1 font-mono">
                       {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
                     </span>
                   </div>
