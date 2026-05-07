@@ -36,7 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
-type Environment = 'recebimento' | 'separacao';
+type Environment = 'recebimento' | 'separacao' | 'geral';
 
 interface DayData {
   id: string;
@@ -88,6 +88,7 @@ export default function App() {
   const [metas, setMetas] = useState<Metas>(() => ({ CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 }));
 
   const [data, setData] = useState<{ atual: DayData[] }>(() => ({ atual: generateWeeklyStructure() }));
+  const [allData, setAllData] = useState<Record<string, { atual: DayData[], metas: Metas }>>({});
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -106,6 +107,25 @@ export default function App() {
   // --- Effects ---
   useEffect(() => {
     if (!selectedEnv) return;
+
+    if (selectedEnv === 'geral') {
+      const environments: ('recebimento' | 'separacao')[] = ['recebimento', 'separacao'];
+      const combined: Record<string, { atual: DayData[], metas: Metas }> = {};
+      
+      environments.forEach(env => {
+        const metasKey = `logistics_${env}_metas_v4`;
+        const dataKey = `logistics_${env}_data_v4`;
+        const savedMetas = localStorage.getItem(metasKey);
+        const savedData = localStorage.getItem(dataKey);
+        
+        combined[env] = {
+          atual: savedData ? JSON.parse(savedData).atual : generateWeeklyStructure(),
+          metas: savedMetas ? JSON.parse(savedMetas) : { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 }
+        };
+      });
+      setAllData(combined);
+      return;
+    }
 
     const defaultMetas = { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 };
     const metasKey = `logistics_${selectedEnv}_metas_v4`;
@@ -184,8 +204,8 @@ export default function App() {
       const prodA = calculateProdReal(pecas, Number(item.auxiliares) || 0, jornada);
       
       const volumeOk = pecas >= (metas.VOLUME || 6000);
-      const prodCOk = prodC >= (metas.CONFERENTE || 220);
-      const prodAOk = selectedEnv === 'separacao' ? true : prodA >= (metas.AUXILIAR || 110);
+      const prodCOk = selectedEnv === 'separacao' ? true : prodC >= (metas.CONFERENTE || 220);
+      const prodAOk = prodA >= (metas.AUXILIAR || 110);
       
       const allOk = volumeOk && prodCOk && prodAOk && pecas > 0;
       return filterMode === 'ok' ? allOk : (filterMode === 'pendente' && pecas > 0 && !allOk);
@@ -197,6 +217,53 @@ export default function App() {
     const isWeekView = dashboardDateFilter === 'semana';
     const isMonthView = dashboardDateFilter === 'mes';
     const isYearView = dashboardDateFilter === 'ano';
+
+    if (selectedEnv === 'geral') {
+      const envs = Object.keys(allData);
+      let totalPecasGeneral = 0;
+      let totalHeadcountGeneral = 0;
+      let ativosCountGeneral = 0;
+      
+      const envStats = envs.map(env => {
+        const envData = allData[env].atual;
+        const targetData = (isWeekView || isMonthView || isYearView)
+          ? envData 
+          : envData.filter(d => d.id === dashboardDateFilter);
+        
+        const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
+        const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
+        const count = ativos.length || 1;
+        
+        const factor = isMonthView ? 4 : isYearView ? 48 : 1;
+        totalPecasGeneral += totalPecas * factor;
+        
+        const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
+        const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
+        
+        const hcTotal = env === 'separacao' ? mediaHeadcountAux : (mediaHeadcountConf + mediaHeadcountAux);
+        totalHeadcountGeneral += hcTotal;
+        ativosCountGeneral += ativos.length;
+
+        return {
+          env,
+          totalPecas: totalPecas * factor,
+          hcTotal,
+          ativos: ativos.length
+        };
+      });
+
+      return {
+        totalPecas: totalPecasGeneral,
+        mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
+        diasAtivos: ativosCountGeneral,
+        envStats,
+        isDayView,
+        isWeekView,
+        isMonthView,
+        isYearView,
+        realPecas: totalPecasGeneral // In general view, we show the total directly
+      };
+    }
 
     const targetData = (isWeekView || isMonthView || isYearView)
       ? data.atual 
@@ -277,10 +344,11 @@ export default function App() {
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Selecione o fluxo de operação para iniciar a gestão</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {[
                   { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-indigo-600', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
-                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' }
+                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
+                  { id: 'geral', label: 'Gestão Geral', icon: BarChart2, color: 'bg-blue-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise de performance.' }
                 ].map(env => (
                   <button
                     key={env.id}
@@ -357,8 +425,10 @@ export default function App() {
                   <ArrowRightLeft className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-white font-black tracking-tight uppercase text-lg leading-none">Gestão integrada</span>
-                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">Ambiente: {selectedEnv}</span>
+                  <span className="text-white font-black tracking-tight uppercase text-xl leading-none">Gestão integrada</span>
+                  <span className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-1.5 font-mono">
+                    {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
+                  </span>
                 </div>
               </button>
 
@@ -366,20 +436,20 @@ export default function App() {
               <nav className="hidden md:flex items-center gap-1">
                 {[
                   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                  { id: 'input', label: 'Gestão Operacional', icon: Zap },
-                  { id: 'meta', label: 'Configurações', icon: Target },
-                  { id: 'calculadora', label: 'Simular demanda', icon: Calculator }
-                ].map(item => (
+                  { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
+                  { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
+                  { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
+                ].filter(item => !item.hidden).map(item => (
                   <button 
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 group ${
+                    className={`flex items-center gap-2 px-6 py-4 rounded-xl text-base font-bold transition-all duration-300 group ${
                       activeTab === item.id 
                       ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 shadow-inner' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
                     }`}
                   >
-                    <item.icon size={18} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                    <item.icon size={20} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
                     <span className="tracking-wide uppercase">{item.label}</span>
                   </button>
                 ))}
@@ -410,10 +480,10 @@ export default function App() {
                 <div className="px-4 py-6 space-y-2">
                   {[
                     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                    { id: 'input', label: 'Gestão Operacional', icon: Zap },
-                    { id: 'meta', label: 'Configurações', icon: Target },
-                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator }
-                  ].map(item => (
+                    { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
+                    { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
+                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
+                  ].filter(item => !item.hidden).map(item => (
                     <button 
                       key={item.id}
                       onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
@@ -449,12 +519,16 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-1 w-10 bg-blue-900 rounded-full" />
-                  <span className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Ambiente {selectedEnv}</span>
+                  <span className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">
+                    {selectedEnv === 'geral' ? 'Visão Consolidada CDTO' : `Ambiente ${selectedEnv}`}
+                  </span>
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">
-                  {activeTab === 'dashboard' ? 'Sumário de Performance' : 
-                   activeTab === 'input' ? 'Console de Operações' : 
-                   activeTab === 'meta' ? 'Parametrização de Metas' : 'Simular demanda'}
+                  {selectedEnv === 'geral' ? 'Control Tower Dashboard' : (
+                    activeTab === 'dashboard' ? 'Sumário de Performance' : 
+                    activeTab === 'input' ? 'Console de Operações' : 
+                    activeTab === 'meta' ? 'Parametrização de Metas' : 'Simular demanda'
+                  )}
                 </h1>
               </div>
               <div className="flex items-center gap-3 no-print bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm">
@@ -522,7 +596,7 @@ export default function App() {
                    </div>
                    <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
                    <div className="flex gap-2 overflow-x-auto max-w-[300px] sm:max-w-none pb-1 sm:pb-0">
-                     {data.atual.map(dia => (
+                     {generateWeeklyStructure().map(dia => (
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
@@ -534,193 +608,326 @@ export default function App() {
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
-                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                        <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Total Hoje</p>
-                        <p className="text-2xl font-black text-indigo-900">
-                          {stats.isDayView 
-                            ? stats.realPecas.toLocaleString()
-                            : (data.atual.find(d => d.id === new Date().getDay().toString())?.pecas || '0').toLocaleString()
-                          }
-                        </p>
-                    </div>
-                    <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
-                        <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal (Real)</p>
-                        <p className="text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
-                        <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
-                        <p className="text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100/50">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
-                        <p className="text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                      {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
-                    </span>
-                    <div className="flex items-end justify-between mt-3">
-                       <div>
-                         <span className="text-4xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
-                         <p className="text-xs font-black text-slate-400 uppercase mt-1">
-                           {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
-                         </p>
-                       </div>
-                          <div className="text-right">
-                            {selectedEnv !== 'separacao' && (
-                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
-                            )}
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                {selectedEnv === 'geral' ? (
+                  /* GESTÃO GERAL VIEW */
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                        <div>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Volume Consolidado</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-slate-400 uppercase">PÇS</span>
                           </div>
+                        </div>
+                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                          <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
+                          </div>
+                          <BarChart2 size={24} className="text-slate-100 group-hover:text-indigo-100 transition-colors" />
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                        <div>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Efetivo Total</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-blue-900 tracking-tighter">{stats.mediaHeadcountTotal}</span>
+                            <span className="text-sm font-bold text-slate-400 uppercase">Colaboradores</span>
+                          </div>
+                        </div>
+                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                          <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-blue-900" />
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Médio / Período</span>
+                          </div>
+                          <Zap size={24} className="text-slate-100 group-hover:text-blue-100 transition-colors" />
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                        <div>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Engajamento Operacional</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-emerald-600 tracking-tighter">100%</span>
+                          </div>
+                        </div>
+                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                          <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Taxa de Atividade</span>
+                          </div>
+                          <Activity size={24} className="text-slate-100 group-hover:text-emerald-100 transition-colors" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                       <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden relative">
+                         <div className="absolute top-0 right-0 p-8">
+                            <Layers className="text-blue-900/5" size={120} />
+                         </div>
+                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-8 flex items-center gap-3">
+                           <span className="w-2 h-8 bg-blue-900 rounded-full" />
+                           Distribuição por Área
+                         </h3>
+                         <div className="space-y-6 relative z-10">
+                           {stats.envStats?.map((env: any) => (
+                             <div key={env.env} className="group">
+                               <div className="flex justify-between items-end mb-2">
+                                 <div>
+                                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{env.env === 'recebimento' ? 'Recebimento' : 'Separação'}</p>
+                                   <p className="text-xl font-black text-slate-800">{env.totalPecas.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">PÇS</span></p>
+                                 </div>
+                                 <div className="text-right">
+                                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
+                                   <p className="text-sm font-black text-slate-600">{Math.round((env.totalPecas / stats.totalPecas) * 100)}%</p>
+                                 </div>
+                               </div>
+                               <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                                 <motion.div 
+                                   initial={{ width: 0 }}
+                                   animate={{ width: `${(env.totalPecas / stats.totalPecas) * 100}%` }}
+                                   transition={{ duration: 1, ease: "circOut" }}
+                                   className={`h-full ${env.env === 'recebimento' ? 'bg-indigo-600' : 'bg-emerald-600'}`}
+                                 />
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+
+                       <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-center text-center space-y-6">
+                         <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-blue-900">
+                           <Calendar className="w-10 h-10" />
+                         </div>
+                         <div>
+                           <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Insights de Gestão</h4>
+                           <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed max-w-sm mx-auto">
+                             A operação mantém um fluxo equilibrado entre as áreas. Recomenda-se monitorar o headcount volante para suportar picos de demanda no recebimento.
+                           </p>
+                         </div>
+                         <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
+                           <div className="p-4 bg-slate-50 rounded-2xl">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dias Analisados</p>
+                             <p className="text-xl font-black text-slate-800">{stats.diasAtivos / (stats.envStats?.length || 1)}</p>
+                           </div>
+                           <div className="p-4 bg-slate-50 rounded-2xl">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Equipe</p>
+                             <p className="text-xl font-black text-slate-800">{stats.mediaHeadcountTotal}</p>
+                           </div>
+                         </div>
+                       </div>
                     </div>
                   </div>
-                  {selectedEnv !== 'separacao' && (
+                ) : (
+                  /* STANDARD DASHBOARD VIEW */
+                  <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
+                      <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                          <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Total Hoje</p>
+                          <p className="text-2xl font-black text-indigo-900">
+                            {stats.isDayView 
+                              ? stats.realPecas.toLocaleString()
+                              : (data.atual.find(d => d.id === new Date().getDay().toString())?.pecas || '0').toLocaleString()
+                            }
+                          </p>
+                      </div>
+                      <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
+                          <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal (Real)</p>
+                          <p className="text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
+                          <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
+                          <p className="text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100/50">
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
+                          <p className="text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
+                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                        {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
+                      </span>
                       <div className="flex items-end justify-between mt-3">
                         <div>
-                          <span className="text-4xl font-black text-slate-800">{stats.mediaRealConf}</span>
-                          <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                          <span className="text-4xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
+                          <p className="text-xs font-black text-slate-400 uppercase mt-1">
+                            {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
+                          </p>
                         </div>
-                        <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
-                          {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
+                            <div className="text-right">
+                              {selectedEnv === 'separacao' && (
+                                <div className="mb-2">
+                                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Prod. Média</p>
+                                  <p className="text-lg font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[9px] text-slate-400">PÇ/H</span></p>
+                                </div>
+                              )}
+                              {selectedEnv !== 'separacao' && (
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                              )}
+                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                            </div>
+                      </div>
+                    </div>
+                    {selectedEnv !== 'separacao' && (
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
+                        <div className="flex items-end justify-between mt-3">
+                          <div>
+                            <span className="text-4xl font-black text-slate-800">{stats.mediaRealConf}</span>
+                            <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                          </div>
+                          <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
+                            {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
+                      <div className="flex items-end justify-between mt-3">
+                        <div>
+                          <span className="text-4xl font-black text-slate-800">{stats.mediaRealAux}</span>
+                          <p id="ref-auxiliar-target" className="text-xs font-black text-slate-400 uppercase mt-1">Meta Ref: {metas.AUXILIAR}</p>
+                        </div>
+                        <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
+                          {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
                         </span>
                       </div>
                     </div>
-                  )}
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
-                    <div className="flex items-end justify-between mt-3">
-                      <div>
-                        <span className="text-4xl font-black text-slate-800">{stats.mediaRealAux}</span>
-                        <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
-                      </div>
-                      <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
-                        {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                        {stats.isDayView ? 'Volume Real' : stats.isYearView ? 'Volume Est. Ano' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
                       </span>
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                      {stats.isDayView ? 'Volume Real' : stats.isYearView ? 'Volume Est. Ano' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
-                    </span>
-                    <div className="flex items-end justify-between mt-3">
-                      <span className="text-4xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</span>
-                      <div className="text-right">
-                        {!stats.isDayView && (
-                           <p className="text-[11px] font-black text-rose-500 uppercase tracking-tighter leading-none mb-1">Produzido: {stats.realPecas.toLocaleString()}</p>
-                        )}
-                        <span className="text-xs font-bold text-emerald-500 uppercase block tracking-tighter leading-none">
-                          {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
-                        </span>
+                      <div className="flex items-end justify-between mt-3">
+                        <span className="text-4xl font-black text-slate-800">{stats.totalPecas?.toLocaleString()}</span>
+                        <div className="text-right">
+                          {!stats.isDayView && (
+                            <p className="text-[11px] font-black text-rose-500 uppercase tracking-tighter leading-none mb-1">Produzido: {stats.realPecas?.toLocaleString()}</p>
+                          )}
+                          <span className="text-xs font-bold text-emerald-500 uppercase block tracking-tighter leading-none">
+                            {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block print:space-y-6">
-                  <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden print:shadow-none print:break-inside-avoid">
-                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-slate-700 flex items-center uppercase">
-                        <span className="w-2 h-6 bg-indigo-500 rounded mr-3"></span>
-                        Análise de Performance vs Metas
-                      </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block print:space-y-6">
+                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden print:shadow-none print:break-inside-avoid">
+                      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-slate-700 flex items-center uppercase">
+                          <span className="w-2 h-6 bg-indigo-500 rounded mr-3"></span>
+                          Análise de Performance vs Metas
+                        </h3>
+                      </div>
+                      <div className="p-6 h-[350px] w-full print:h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={data.atual} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                            <XAxis 
+                              dataKey="dia" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} 
+                              interval={0}
+                            />
+                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                            <Tooltip 
+                              cursor={{fill: '#f1f5f9'}}
+                              contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
+                            />
+                            <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
+                            {selectedEnv !== 'separacao' && (
+                              <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+                            )}
+                            <Bar name={`Real ${auxLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
-                    <div className="p-6 h-[350px] w-full print:h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data.atual} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                          <XAxis 
-                            dataKey="dia" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} 
-                            interval={0}
-                          />
-                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                          <Tooltip 
-                            cursor={{fill: '#f1f5f9'}}
-                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
-                          />
-                          <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
-                          {selectedEnv !== 'separacao' && (
-                            <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
-                          )}
-                          <Bar name={`Real ${auxLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
 
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden print:shadow-none print:break-inside-avoid">
-                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-                      <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Histórico do Período</h3>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      {data.atual.map(dia => {
-                        const pecas = Number(dia.pecas) || 0;
-                        const jornada = Number(dia.jornada) || 9;
-                        const prodC = calculateProdReal(pecas, Number(dia.conferentes) || 0, jornada);
-                        const prodA = calculateProdReal(pecas, Number(dia.auxiliares) || 0, jornada);
-                        
-                        const volumeOk = pecas >= (metas.VOLUME || 6000);
-                        const prodCOk = prodC >= (metas.CONFERENTE || 220);
-                        const prodAOk = selectedEnv === 'separacao' ? true : prodA >= (metas.AUXILIAR || 110);
-                        
-                        const isOk = volumeOk && prodCOk && prodAOk;
-                        const isZero = pecas === 0;
-                        const prod = prodC;
-                        
-                        return (
-                          <div key={dia.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-emerald-500' : 'bg-rose-500')}`} />
-                              <div>
-                                <p className="text-[11px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
-                                <p className="text-[10px] text-slate-400 font-bold">{dia.pecas.toLocaleString()} PÇS</p>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden print:shadow-none print:break-inside-avoid">
+                      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Histórico do Período</h3>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {data.atual.map(dia => {
+                          const pecas = Number(dia.pecas) || 0;
+                          const jornada = Number(dia.jornada) || 9;
+                          const prodC = calculateProdReal(pecas, Number(dia.conferentes) || 0, jornada);
+                          const prodA = calculateProdReal(pecas, Number(dia.auxiliares) || 0, jornada);
+                          
+                          const volumeOk = pecas >= (metas.VOLUME || 6000);
+                          const prodCOk = selectedEnv === 'separacao' ? true : prodC >= (metas.CONFERENTE || 220);
+                          const prodAOk = prodA >= (metas.AUXILIAR || 110);
+                          
+                          const isOk = volumeOk && prodCOk && prodAOk;
+                          const isZero = pecas === 0;
+                          
+                          return (
+                            <div key={dia.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-emerald-500' : 'bg-rose-500')}`} />
+                                <div>
+                                  <p className="text-[11px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold">{dia.pecas.toLocaleString()} PÇS</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                {!isZero && selectedEnv !== 'separacao' && (
+                                  <div className="text-right border-r border-slate-200 pr-5">
+                                    <p className={`text-sm font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                      {prodC}
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>
+                                  </div>
+                                )}
+                                <div className="text-right min-w-[50px]">
+                                  <p className={`text-base font-black ${isZero ? 'text-slate-300' : (prodAOk ? 'text-emerald-600' : 'text-rose-600')}`}>
+                                    {isZero ? '--' : prodA}
+                                  </p>
+                                  {!isZero && <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{selectedEnv === 'separacao' ? 'PÇ/H' : 'A'} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>}
+                                </div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className={`text-sm font-black ${isZero ? 'text-slate-300' : (isOk ? 'text-emerald-600' : 'text-rose-600')}`}>
-                                {isZero ? '--' : prod}
-                              </p>
-                              {!isZero && <p className="text-[10px] font-bold text-slate-400 uppercase">PÇ/H</p>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                  <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-xl print:shadow-none print:p-6 print:break-inside-avoid">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="text-center md:text-left">
-                      <h3 className="text-xl font-bold text-slate-800 uppercase flex items-center gap-2 justify-center md:justify-start">
-                        RESUMO DE METAS
-                      </h3>
-                      <p className="text-slate-500 text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
-                    </div>
-                    <div className="flex gap-4">
-                      {selectedEnv !== 'separacao' && (
-                        <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-2xl min-w-[160px] text-center">
-                          <p className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest">{confLabel}s Necessários</p>
-                          <p className="text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
-                        </div>
-                      )}
-                      <div className="bg-slate-50 border border-slate-200 p-8 rounded-2xl min-w-[160px] text-center">
-                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Aux. Necessários</p>
-                        <p className="text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
-                </div>
+
+                    <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-xl print:shadow-none print:p-6 print:break-inside-avoid">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                      <div className="text-center md:text-left">
+                        <h3 className="text-xl font-bold text-slate-800 uppercase flex items-center gap-2 justify-center md:justify-start">
+                          RESUMO DE METAS
+                        </h3>
+                        <p className="text-slate-500 text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
+                      </div>
+                      <div className="flex gap-4">
+                        {selectedEnv !== 'separacao' && (
+                          <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-2xl min-w-[160px] text-center">
+                            <p className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest">{confLabel}s Necessários</p>
+                            <p className="text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
+                          </div>
+                        )}
+                        <div className="bg-slate-50 border border-slate-200 p-8 rounded-2xl min-w-[160px] text-center">
+                          <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Aux. Necessários</p>
+                          <p className="text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -749,26 +956,26 @@ export default function App() {
               </div>
 
               <div className="space-y-8 animate-in slide-in-from-right-5 duration-500 print:space-y-0 print:animate-none">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={20}/></div>
+                <div className="hidden md:flex items-center gap-6 no-print">
+                  <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
+                    <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={24}/></div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Volume Semanal</p>
-                      <p className="text-xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</p>
+                      <p className="text-2xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm border-l-4 border-l-red-800">
-                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-800"><Activity size={20}/></div>
+                  <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm border-l-4 border-l-red-800">
+                    <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center text-red-800"><Activity size={24}/></div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Prod. Média (H)</p>
-                      <p className="text-xl font-black text-slate-800">{stats.mediaRealConf} <span className="text-xs text-slate-400">PÇ/H</span></p>
+                      <p className="text-2xl font-black text-slate-800">{stats.mediaRealConf} <span className="text-sm text-slate-400">PÇ/H</span></p>
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm">
-                    <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600"><CalendarCheck size={20}/></div>
+                  <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
+                    <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600"><CalendarCheck size={24}/></div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dias com Atividade</p>
-                      <p className="text-xl font-black text-slate-800">{stats.diasAtivos} <span className="text-xs text-slate-400">DIAS</span></p>
+                      <p className="text-2xl font-black text-slate-800">{stats.diasAtivos} <span className="text-sm text-slate-400">DIAS</span></p>
                     </div>
                   </div>
                 </div>
