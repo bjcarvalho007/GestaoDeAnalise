@@ -208,6 +208,7 @@ export default function App() {
     
     // Fatores de projeção (ajustável conforme necessidade)
     const factor = isMonthView ? 4 : isYearView ? 48 : 1;
+    const realPecas = totalPecas;
     const displayTotalPecas = totalPecas * factor;
     
     const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
@@ -228,7 +229,8 @@ export default function App() {
       : Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
 
     return { 
-      totalPecas: displayTotalPecas, 
+      totalPecas: displayTotalPecas,
+      realPecas,
       diasAtivos: ativos.length * factor, 
       mediaRealConf, 
       mediaRealAux, 
@@ -355,8 +357,8 @@ export default function App() {
                   <ArrowRightLeft className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-white font-black tracking-tight uppercase text-base leading-none">Gestão integrada</span>
-                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1">Ambiente: {selectedEnv}</span>
+                  <span className="text-white font-black tracking-tight uppercase text-lg leading-none">Gestão integrada</span>
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">Ambiente: {selectedEnv}</span>
                 </div>
               </button>
 
@@ -371,13 +373,13 @@ export default function App() {
                   <button 
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 group ${
+                    className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 group ${
                       activeTab === item.id 
                       ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 shadow-inner' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
                     }`}
                   >
-                    <item.icon size={16} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                    <item.icon size={18} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
                     <span className="tracking-wide uppercase">{item.label}</span>
                   </button>
                 ))}
@@ -446,18 +448,18 @@ export default function App() {
             <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-4 no-print border-b border-slate-200 pb-8">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-8 bg-blue-900 rounded-full" />
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Ambiente {selectedEnv}</span>
+                  <div className="h-1 w-10 bg-blue-900 rounded-full" />
+                  <span className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Ambiente {selectedEnv}</span>
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">
                   {activeTab === 'dashboard' ? 'Sumário de Performance' : 
                    activeTab === 'input' ? 'Console de Operações' : 
                    activeTab === 'meta' ? 'Parametrização de Metas' : 'Simular demanda'}
                 </h1>
               </div>
-              <div className="flex items-center gap-3 no-print bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-3 no-print bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm">
                 <select 
-                  className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
+                  className="bg-transparent border-none text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 >
@@ -465,9 +467,9 @@ export default function App() {
                     <option key={m} value={i} className="text-slate-900">{m}</option>
                   ))}
                 </select>
-                <div className="w-px h-4 bg-slate-200" />
+                <div className="w-px h-6 bg-slate-200" />
                 <select 
-                  className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
+                  className="bg-transparent border-none text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                 >
@@ -475,7 +477,7 @@ export default function App() {
                     <option key={y} value={y} className="text-slate-900">{y}</option>
                   ))}
                 </select>
-                <Calendar size={14} className="text-blue-900 ml-1" />
+                <Calendar size={18} className="text-blue-900 ml-1" />
               </div>
             </div>
 
@@ -497,34 +499,34 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8 animate-in duration-500 print:space-y-6">
                 {/* Date Filter Bar */}
-                <div className="flex flex-wrap items-center gap-4 no-print bg-white p-3 rounded-2xl border border-slate-200 shadow-sm w-fit">
-                   <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                <div className="flex flex-wrap items-center gap-4 no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-sm w-fit">
+                   <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
                      <button 
                        onClick={() => setDashboardDateFilter('semana')}
-                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Semana
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('mes')}
-                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Mês
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('ano')}
-                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Ano
                      </button>
                    </div>
-                   <div className="w-px h-6 bg-slate-200 mx-1" />
-                   <div className="flex gap-1 overflow-x-auto max-w-[300px] sm:max-w-none pb-1 sm:pb-0">
+                   <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
+                   <div className="flex gap-2 overflow-x-auto max-w-[300px] sm:max-w-none pb-1 sm:pb-0">
                      {data.atual.map(dia => (
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
-                         className={`px-3 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all min-w-[50px] ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                         className={`px-4 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all min-w-[60px] ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
                        </button>
@@ -533,85 +535,91 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
-                    <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
-                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Diário</p>
-                        <p className="text-xl font-black text-indigo-900">
+                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                        <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Total Hoje</p>
+                        <p className="text-2xl font-black text-indigo-900">
                           {stats.isDayView 
-                            ? (data.atual.find(d => d.id === dashboardDateFilter)?.pecas || 0).toLocaleString()
-                            : 'Selecc. Dia'}
+                            ? stats.realPecas.toLocaleString()
+                            : (data.atual.find(d => d.id === new Date().getDay().toString())?.pecas || '0').toLocaleString()
+                          }
                         </p>
                     </div>
-                    <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
-                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal</p>
-                        <p className="text-xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                    <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
+                        <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal (Real)</p>
+                        <p className="text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
                     </div>
-                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
-                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
-                        <p className="text-xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
+                        <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
+                        <p className="text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
                     </div>
-                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
-                        <p className="text-xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
+                    <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100/50">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
+                        <p className="text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
                       {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                     </span>
-                    <div className="flex items-end justify-between mt-2">
+                    <div className="flex items-end justify-between mt-3">
                        <div>
-                         <span className="text-3xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
-                         <p className="text-[11px] font-black text-slate-400 uppercase mt-1">
+                         <span className="text-4xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
+                         <p className="text-xs font-black text-slate-400 uppercase mt-1">
                            {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
                          </p>
                        </div>
                           <div className="text-right">
                             {selectedEnv !== 'separacao' && (
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
                             )}
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
                           </div>
                     </div>
                   </div>
                   {selectedEnv !== 'separacao' && (
-                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
-                      <div className="flex items-end justify-between mt-2">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
+                      <div className="flex items-end justify-between mt-3">
                         <div>
-                          <span className="text-3xl font-black text-slate-800">{stats.mediaRealConf}</span>
-                          <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                          <span className="text-4xl font-black text-slate-800">{stats.mediaRealConf}</span>
+                          <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
                         </div>
-                        <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
                           {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
-                          {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
+                          {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
                         </span>
                       </div>
                     </div>
                   )}
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
-                    <div className="flex items-end justify-between mt-2">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
+                    <div className="flex items-end justify-between mt-3">
                       <div>
-                        <span className="text-3xl font-black text-slate-800">{stats.mediaRealAux}</span>
-                        <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
+                        <span className="text-4xl font-black text-slate-800">{stats.mediaRealAux}</span>
+                        <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
                       </div>
-                      <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
-                        {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
+                        {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
                       </span>
                     </div>
                   </div>
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
                       {stats.isDayView ? 'Volume Real' : stats.isYearView ? 'Volume Est. Ano' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
                     </span>
-                    <div className="flex items-end justify-between mt-2">
-                      <span className="text-3xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-emerald-500 mb-1 tracking-tighter uppercase">
-                        {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
-                      </span>
+                    <div className="flex items-end justify-between mt-3">
+                      <span className="text-4xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</span>
+                      <div className="text-right">
+                        {!stats.isDayView && (
+                           <p className="text-[11px] font-black text-rose-500 uppercase tracking-tighter leading-none mb-1">Produzido: {stats.realPecas.toLocaleString()}</p>
+                        )}
+                        <span className="text-xs font-bold text-emerald-500 uppercase block tracking-tighter leading-none">
+                          {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -632,15 +640,15 @@ export default function App() {
                             dataKey="dia" 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{fontSize: 9, fontWeight: 700, fill: '#64748b'}} 
+                            tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} 
                             interval={0}
                           />
-                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#94a3b8'}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
                           <Tooltip 
                             cursor={{fill: '#f1f5f9'}}
                             contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
                           />
-                          <Legend wrapperStyle={{fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
+                          <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
                           {selectedEnv !== 'separacao' && (
                             <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
                           )}
@@ -674,15 +682,15 @@ export default function App() {
                             <div className="flex items-center gap-3">
                               <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-emerald-500' : 'bg-rose-500')}`} />
                               <div>
-                                <p className="text-[10px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
-                                <p className="text-[9px] text-slate-400">{dia.pecas.toLocaleString()} PÇS</p>
+                                <p className="text-[11px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
+                                <p className="text-[10px] text-slate-400 font-bold">{dia.pecas.toLocaleString()} PÇS</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-xs font-bold ${isZero ? 'text-slate-300' : (isOk ? 'text-emerald-600' : 'text-rose-600')}`}>
+                              <p className={`text-sm font-black ${isZero ? 'text-slate-300' : (isOk ? 'text-emerald-600' : 'text-rose-600')}`}>
                                 {isZero ? '--' : prod}
                               </p>
-                              {!isZero && <p className="text-[8px] font-bold text-slate-400 uppercase">PÇ/H</p>}
+                              {!isZero && <p className="text-[10px] font-bold text-slate-400 uppercase">PÇ/H</p>}
                             </div>
                           </div>
                         );
@@ -824,13 +832,13 @@ export default function App() {
                               <div className="flex flex-col gap-1 mt-1">
                                 <div className="flex items-center gap-1.5">
                                   <div className={`w-1.5 h-1.5 rounded-full ${volumeOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                  <span className={`text-[8px] font-bold uppercase tracking-wider ${volumeOk ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${volumeOk ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     Volume: {localPecas.toLocaleString()} PÇS {volumeOk ? '(OK)' : `(FALTA ${Math.max(0, (metas.VOLUME || 6000) - localPecas).toLocaleString()})`}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <div className={`w-1.5 h-1.5 rounded-full ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                  <span className={`text-[8px] font-bold uppercase tracking-wider ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     Produtividade: {prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'Meta Atingida' : 'Abaixo da Meta'}
                                   </span>
                                 </div>
@@ -847,44 +855,44 @@ export default function App() {
                         </div>
 
                         <div className="p-6 space-y-5 print:p-4 print:space-y-3">
-                         <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex flex-col gap-3 mb-4">
-                             <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-indigo-950 uppercase tracking-widest">Dimensionamento do Dia</span>
-                             </div>
-                             <div className="grid grid-cols-3 gap-2">
-                                <div className="bg-white p-2 rounded-xl border border-indigo-100 text-center shadow-sm">
-                                  <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Total Homens</p>
-                                  <p className="text-lg font-black text-indigo-950">{totalSugerido}</p>
-                                </div>
-                                {selectedEnv !== 'separacao' && (
-                                  <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
-                                    <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Sug. {confLabel.substring(0, 4)}</p>
-                                    <p className={`text-lg font-black ${staffingCOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugC}</p>
-                                  </div>
-                                )}
-                                <div className={`p-2 rounded-xl text-center border transition-all ${staffingAOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
-                                  <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Sug. Aux</p>
-                                  <p className={`text-lg font-black ${staffingAOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugA}</p>
-                                </div>
-                             </div>
+                          <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex flex-col gap-3 mb-4">
+                              <div className="flex justify-between items-center">
+                                 <span className="text-xs font-black text-indigo-950 uppercase tracking-widest">Dimensionamento do Dia</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                 <div className="bg-white p-2 rounded-xl border border-indigo-100 text-center shadow-sm">
+                                   <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Total Homens</p>
+                                   <p className="text-xl font-black text-indigo-950">{totalSugerido}</p>
+                                 </div>
+                                 {selectedEnv !== 'separacao' && (
+                                   <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Sug. {confLabel.substring(0, 4)}</p>
+                                     <p className={`text-xl font-black ${staffingCOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugC}</p>
+                                   </div>
+                                 )}
+                                 <div className={`p-2 rounded-xl text-center border transition-all ${staffingAOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
+                                   <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Sug. Aux</p>
+                                   <p className={`text-xl font-black ${staffingAOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugA}</p>
+                                 </div>
+                              </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Volume (PÇS)</label>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Volume (PÇS)</label>
                               <input 
                                 type="number" 
-                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
                                 value={item.pecas || ''} 
                                 onChange={(e) => updateDataField(item.id, 'pecas', e.target.value)} 
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Equipa (H)</label>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Equipa (H)</label>
                               <input 
                                 type="number" 
                                 step="0.5"
-                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
                                 value={item.jornada || ''} 
                                 onChange={(e) => updateDataField(item.id, 'jornada', e.target.value)} 
                               />
@@ -894,16 +902,16 @@ export default function App() {
                           <div className="grid grid-cols-2 gap-4">
                             {selectedEnv !== 'separacao' && (
                               <div className="space-y-1.5">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">{confLabel}s</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">{confLabel}s</label>
                                 <div className="relative">
                                   <input 
                                     type="number" 
-                                    className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-indigo-600 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-indigo-600 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
                                     value={item.conferentes || ''} 
                                     onChange={(e) => updateDataField(item.id, 'conferentes', e.target.value)} 
                                   />
                                   {hasData && (
-                                    <div className={`absolute -top-2 -right-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${staffingCOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                                    <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingCOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
                                       {diffC > 0 ? `+${diffC}` : diffC < 0 ? diffC : 'OK'}
                                     </div>
                                   )}
@@ -911,16 +919,16 @@ export default function App() {
                               </div>
                             )}
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Auxiliares</label>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Auxiliares</label>
                               <div className="relative">
                                 <input 
                                   type="number" 
-                                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-slate-600 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-600 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
                                   value={item.auxiliares || ''} 
                                   onChange={(e) => updateDataField(item.id, 'auxiliares', e.target.value)} 
                                 />
                                 {hasData && (
-                                  <div className={`absolute -top-2 -right-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${staffingAOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                                  <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingAOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
                                     {diffA > 0 ? `+${diffA}` : diffA < 0 ? diffA : 'OK'}
                                   </div>
                                 )}
@@ -931,13 +939,13 @@ export default function App() {
                           <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
                               {selectedEnv !== 'separacao' && (
                                 <div className="text-center">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
-                                  <p id={`prod-real-c-${item.id}`} className={`text-base font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodC} <span className="text-[10px] text-slate-400">/ {metas.CONFERENTE}</span></p>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
+                                  <p id={`prod-real-c-${item.id}`} className={`text-xl font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodC} <span className="text-xs text-slate-400">/ {metas.CONFERENTE}</span></p>
                                 </div>
                               )}
                               <div className="text-center border-l border-slate-100">
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
-                                <p id={`prod-real-a-${item.id}`} className={`text-base font-black ${prodAOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodA} <span className="text-[10px] text-slate-400">/ {metas.AUXILIAR}</span></p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
+                                <p id={`prod-real-a-${item.id}`} className={`text-xl font-black ${prodAOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodA} <span className="text-xs text-slate-400">/ {metas.AUXILIAR}</span></p>
                               </div>
                             </div>
                         </div>
@@ -963,10 +971,10 @@ export default function App() {
                       </div>
                       <div className="space-y-6">
                         <div className="space-y-3">
-                          <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Volume Previsto (PÇS)</label>
+                          <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Volume Previsto (PÇS)</label>
                           <input 
                             type="number" 
-                            className="w-full p-6 bg-slate-50 border border-slate-100 rounded-2xl font-black text-3xl text-slate-800 focus:border-red-800 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all shadow-inner" 
+                            className="w-full p-6 bg-slate-50 border border-slate-100 rounded-2xl font-black text-4xl text-slate-800 focus:border-red-800 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all shadow-inner" 
                             value={calcData.pecas || ''} 
                             onChange={(e) => {
                               const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -980,11 +988,11 @@ export default function App() {
                           />
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Horas Operacionais (H)</label>
+                          <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Horas Operacionais (H)</label>
                           <input 
                             type="number" 
                             step="0.5" 
-                            className="w-full p-6 bg-slate-50 border border-slate-100 rounded-2xl font-black text-3xl text-slate-800 focus:border-red-800 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all shadow-inner" 
+                            className="w-full p-6 bg-slate-50 border border-slate-100 rounded-2xl font-black text-4xl text-slate-800 focus:border-red-800 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none transition-all shadow-inner" 
                             value={calcData.jornada || ''} 
                             onChange={(e) => {
                               const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1000,10 +1008,10 @@ export default function App() {
                         <div className="grid grid-cols-2 gap-4">
                           {selectedEnv !== 'separacao' && (
                             <div className="space-y-3">
-                              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Meta {confLabel.substring(0, 4)}. (PÇ/H)</label>
+                              <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Meta {confLabel.substring(0, 4)}. (PÇ/H)</label>
                               <input 
                                 type="number" 
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-2xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
                                 value={calcData.metaConf || ''} 
                                 onChange={(e) => {
                                   const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1018,10 +1026,10 @@ export default function App() {
                             </div>
                           )}
                           <div className="space-y-3">
-                            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Meta Aux. (PÇ/H)</label>
+                            <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Meta Aux. (PÇ/H)</label>
                             <input 
                               type="number" 
-                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
+                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-2xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
                               value={calcData.metaAux || ''} 
                               onChange={(e) => {
                                 const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1039,12 +1047,12 @@ export default function App() {
                     </div>
                     <div className="space-y-5">
                       {selectedEnv !== 'separacao' && (
-                        <div className="bg-blue-900 p-10 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
+                        <div className="bg-blue-900 p-12 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
                           <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
-                          <p className="text-[10px] font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">{confLabel}s (Ajustável)</p>
+                          <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">{confLabel}s (Ajustável)</p>
                           <input 
                             type="number" 
-                            className="w-full bg-transparent text-7xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
+                            className="w-full bg-transparent text-8xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
                             value={calcData.conf || ''} 
                             onChange={(e) => {
                               const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1059,15 +1067,15 @@ export default function App() {
                               });
                             }}
                           />
-                          <p className="text-[9px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
+                          <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
                         </div>
                       )}
-                      <div className="bg-red-800 p-10 rounded-3xl text-white shadow-xl shadow-red-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
+                      <div className="bg-red-800 p-12 rounded-3xl text-white shadow-xl shadow-red-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
                         <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
-                        <p className="text-[10px] font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Auxiliares (Ajustável)</p>
+                        <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Auxiliares (Ajustável)</p>
                         <input 
                           type="number" 
-                          className="w-full bg-transparent text-7xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
+                          className="w-full bg-transparent text-8xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
                           value={calcData.aux || ''} 
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1082,7 +1090,7 @@ export default function App() {
                             });
                           }}
                         />
-                        <p className="text-[9px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaAux} PÇ / H</p>
+                        <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaAux} PÇ / H</p>
                       </div>
                     </div>
                   </div>
@@ -1099,22 +1107,22 @@ export default function App() {
                     <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-700 shadow-xl">
                       <Settings2 size={30} className="text-blue-400" />
                     </div>
-                    <h2 className="text-xl font-bold uppercase tracking-tight">Parametrização de Metas</h2>
-                    <p className="text-slate-500 text-[10px] font-bold mt-3 uppercase tracking-widest">Indicadores de Produtividade Esperada</p>
+                    <h2 className="text-2xl font-bold uppercase tracking-tight">Parametrização de Metas</h2>
+                    <p className="text-slate-500 text-xs font-bold mt-3 uppercase tracking-widest">Indicadores de Produtividade Esperada</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div className="space-y-4 text-center">
-                      <label className="text-[10px] font-bold uppercase text-blue-400 tracking-widest leading-none block h-4">Meta Volume</label>
+                      <label className="text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-4">Meta Volume</label>
                       <input 
                         type="number" 
                         className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-indigo-500 transition-all shadow-inner" 
                         value={metas.VOLUME || ''} 
                         onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[8px] font-bold text-slate-500 uppercase">PEÇAS / DIA</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">PEÇAS / DIA</p>
                     </div>
                     <div className="space-y-4 text-center">
-                      <label className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest leading-none block h-4">Jornada Padrão</label>
+                      <label className="text-xs font-bold uppercase text-emerald-400 tracking-widest leading-none block h-4">Jornada Padrão</label>
                       <input 
                         type="number" 
                         step="0.5"
@@ -1122,29 +1130,29 @@ export default function App() {
                         value={metas.JORNADA || ''} 
                         onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[8px] font-bold text-slate-500 uppercase">HORAS / DIA</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">HORAS / DIA</p>
                     </div>
                     {selectedEnv !== 'separacao' && (
                       <div className="space-y-4 text-center">
-                        <label className="text-[10px] font-bold uppercase text-indigo-400 tracking-widest leading-none block h-4">Alvo {confLabel.substring(0, 4)}.</label>
+                        <label className="text-xs font-bold uppercase text-indigo-400 tracking-widest leading-none block h-4">Alvo {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
                           className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.CONFERENTE || ''} 
                           onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[8px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
                       </div>
                     )}
                     <div className="space-y-4 text-center">
-                      <label className="text-[10px] font-bold uppercase text-red-400 tracking-widest leading-none block h-4">Alvo Auxiliares</label>
+                      <label className="text-xs font-bold uppercase text-red-400 tracking-widest leading-none block h-4">Alvo Auxiliares</label>
                       <input 
                         type="number" 
                         className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
                         value={metas.AUXILIAR || ''} 
                         onChange={(e) => setMetas({...metas, AUXILIAR: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[8px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
                     </div>
                   </div>
                 </div>
