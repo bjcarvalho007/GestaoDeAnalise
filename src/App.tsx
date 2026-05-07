@@ -172,6 +172,9 @@ export default function App() {
   }, [metas]);
 
   // --- Derived Data ---
+  const confLabel = selectedEnv === 'separacao' ? 'Separador' : 'Conferente';
+  const auxLabel = 'Auxiliar';
+
   const filteredOperationalData = useMemo(() => {
     return data.atual.filter(item => {
       if (filterMode === 'todos') return true;
@@ -182,7 +185,7 @@ export default function App() {
       
       const volumeOk = pecas >= (metas.VOLUME || 6000);
       const prodCOk = prodC >= (metas.CONFERENTE || 220);
-      const prodAOk = prodA >= (metas.AUXILIAR || 110);
+      const prodAOk = selectedEnv === 'separacao' ? true : prodA >= (metas.AUXILIAR || 110);
       
       const allOk = volumeOk && prodCOk && prodAOk && pecas > 0;
       return filterMode === 'ok' ? allOk : (filterMode === 'pendente' && pecas > 0 && !allOk);
@@ -214,7 +217,10 @@ export default function App() {
 
     const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
     const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
-    const mediaHeadcountTotal = Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
+    
+    const mediaHeadcountTotal = selectedEnv === 'separacao' 
+      ? mediaHeadcountAux 
+      : Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
 
     return { 
       totalPecas: displayTotalPecas, 
@@ -227,7 +233,7 @@ export default function App() {
       isDayView: dashboardDateFilter !== 'semana' && dashboardDateFilter !== 'mes',
       isMonthView: dashboardDateFilter === 'mes'
     };
-  }, [data, dashboardDateFilter]);
+  }, [data, dashboardDateFilter, selectedEnv]);
 
   const resetWeek = () => {
     if (confirm('Deseja limpar todos os dados e reiniciar a semana?')) {
@@ -525,25 +531,29 @@ export default function App() {
                            {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
                          </p>
                        </div>
-                       <div className="text-right">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">C: {stats.mediaHeadcountConf}</p>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">A: {stats.mediaHeadcountAux}</p>
-                       </div>
+                          <div className="text-right">
+                            {selectedEnv !== 'separacao' && (
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                            )}
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                          </div>
                     </div>
                   </div>
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. Conferente</span>
-                    <div className="flex items-end justify-between mt-2">
-                      <div>
-                        <span className="text-3xl font-black text-slate-800">{stats.mediaRealConf}</span>
-                        <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                  {selectedEnv !== 'separacao' && (
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
+                      <div className="flex items-end justify-between mt-2">
+                        <div>
+                          <span className="text-3xl font-black text-slate-800">{stats.mediaRealConf}</span>
+                          <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                        </div>
+                        <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
+                          {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
+                        </span>
                       </div>
-                      <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
-                        {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
-                      </span>
                     </div>
-                  </div>
+                  )}
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
                     <div className="flex items-end justify-between mt-2">
@@ -595,8 +605,10 @@ export default function App() {
                             contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
                           />
                           <Legend wrapperStyle={{fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
-                          <Bar name="Real Conf." dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
-                          <Bar name="Real Aux." dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
+                          {selectedEnv !== 'separacao' && (
+                            <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+                          )}
+                          <Bar name={`Real ${auxLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -615,7 +627,7 @@ export default function App() {
                         
                         const volumeOk = pecas >= (metas.VOLUME || 6000);
                         const prodCOk = prodC >= (metas.CONFERENTE || 220);
-                        const prodAOk = prodA >= (metas.AUXILIAR || 110);
+                        const prodAOk = selectedEnv === 'separacao' ? true : prodA >= (metas.AUXILIAR || 110);
                         
                         const isOk = volumeOk && prodCOk && prodAOk;
                         const isZero = pecas === 0;
@@ -652,10 +664,12 @@ export default function App() {
                       <p className="text-slate-500 text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
                     </div>
                     <div className="flex gap-4">
-                      <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-2xl min-w-[160px] text-center">
-                        <p className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest">Conf. Necessários</p>
-                        <p className="text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
-                      </div>
+                      {selectedEnv !== 'separacao' && (
+                        <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-2xl min-w-[160px] text-center">
+                          <p className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest">{confLabel}s Necessários</p>
+                          <p className="text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
+                        </div>
+                      )}
                       <div className="bg-slate-50 border border-slate-200 p-8 rounded-2xl min-w-[160px] text-center">
                         <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Aux. Necessários</p>
                         <p className="text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
@@ -746,7 +760,7 @@ export default function App() {
                     
                     const sugC = calculateSugerido(localPecas, localJornada, metas.CONFERENTE || 220);
                     const sugA = calculateSugerido(localPecas, localJornada, metas.AUXILIAR || 110);
-                    const totalSugerido = sugC + sugA;
+                    const totalSugerido = selectedEnv === 'separacao' ? sugA : sugC + sugA;
                     
                     const prodC = calculateProdReal(localPecas, Number(item.conferentes) || 0, localJornada);
                     const prodA = calculateProdReal(localPecas, Number(item.auxiliares) || 0, localJornada);
@@ -756,10 +770,10 @@ export default function App() {
                     const prodCOk = prodC >= (metas.CONFERENTE || 220);
                     const prodAOk = prodA >= (metas.AUXILIAR || 110);
                     const staffingCOk = (Number(item.conferentes) || 0) >= sugC;
-                    const staffingAOk = (Number(item.auxiliares) || 0) >= sugA;
+                    const staffingAOk = selectedEnv === 'separacao' ? true : (Number(item.auxiliares) || 0) >= sugA;
                     const diffC = (Number(item.conferentes) || 0) - sugC;
                     const diffA = (Number(item.auxiliares) || 0) - sugA;
-                    const allOk = volumeOk && prodCOk && prodAOk;
+                    const allOk = volumeOk && prodCOk && (selectedEnv === 'separacao' ? true : prodAOk);
 
                     return (
                       <div id={`card-${item.id}`} key={item.id} className={`bg-white rounded-3xl border overflow-hidden shadow-sm transition-all duration-300 print:shadow-none print:border-slate-200 ${
@@ -779,9 +793,9 @@ export default function App() {
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${prodCOk && prodAOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                  <span className={`text-[8px] font-bold uppercase tracking-wider ${prodCOk && prodAOk ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    Produtividade: {prodCOk && prodAOk ? 'Meta Atingida' : 'Abaixo da Meta'}
+                                  <div className={`w-1.5 h-1.5 rounded-full ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                  <span className={`text-[8px] font-bold uppercase tracking-wider ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    Produtividade: {prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'Meta Atingida' : 'Abaixo da Meta'}
                                   </span>
                                 </div>
                               </div>
@@ -806,10 +820,12 @@ export default function App() {
                                   <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Total Homens</p>
                                   <p className="text-lg font-black text-indigo-950">{totalSugerido}</p>
                                 </div>
-                                <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
-                                  <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Sug. Conf</p>
-                                  <p className={`text-lg font-black ${staffingCOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugC}</p>
-                                </div>
+                                {selectedEnv !== 'separacao' && (
+                                  <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
+                                    <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Sug. {confLabel.substring(0, 4)}</p>
+                                    <p className={`text-lg font-black ${staffingCOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugC}</p>
+                                  </div>
+                                )}
                                 <div className={`p-2 rounded-xl text-center border transition-all ${staffingAOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
                                   <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">Sug. Aux</p>
                                   <p className={`text-lg font-black ${staffingAOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugA}</p>
@@ -840,22 +856,24 @@ export default function App() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Conferentes</label>
-                              <div className="relative">
-                                <input 
-                                  type="number" 
-                                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-indigo-600 focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                                  value={item.conferentes || ''} 
-                                  onChange={(e) => updateDataField(item.id, 'conferentes', e.target.value)} 
-                                />
-                                {hasData && (
-                                  <div className={`absolute -top-2 -right-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${staffingCOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
-                                    {diffC > 0 ? `+${diffC}` : diffC < 0 ? diffC : 'OK'}
-                                  </div>
-                                )}
+                            {selectedEnv !== 'separacao' && (
+                              <div className="space-y-1.5">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">{confLabel}s</label>
+                                <div className="relative">
+                                  <input 
+                                    type="number" 
+                                    className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-center text-indigo-600 focus:bg-white focus:border-indigo-500 outline-none transition-all"
+                                    value={item.conferentes || ''} 
+                                    onChange={(e) => updateDataField(item.id, 'conferentes', e.target.value)} 
+                                  />
+                                  {hasData && (
+                                    <div className={`absolute -top-2 -right-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${staffingCOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                                      {diffC > 0 ? `+${diffC}` : diffC < 0 ? diffC : 'OK'}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Auxiliares</label>
                               <div className="relative">
@@ -875,10 +893,12 @@ export default function App() {
                           </div>
 
                           <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
-                              <div className="text-center">
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Real Conf. (PÇ/H)</p>
-                                <p id={`prod-real-c-${item.id}`} className={`text-base font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodC} <span className="text-[10px] text-slate-400">/ {metas.CONFERENTE}</span></p>
-                              </div>
+                              {selectedEnv !== 'separacao' && (
+                                <div className="text-center">
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
+                                  <p id={`prod-real-c-${item.id}`} className={`text-base font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodC} <span className="text-[10px] text-slate-400">/ {metas.CONFERENTE}</span></p>
+                                </div>
+                              )}
                               <div className="text-center border-l border-slate-100">
                                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
                                 <p id={`prod-real-a-${item.id}`} className={`text-base font-black ${prodAOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodA} <span className="text-[10px] text-slate-400">/ {metas.AUXILIAR}</span></p>
@@ -942,23 +962,25 @@ export default function App() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-3">
-                            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Meta Conf. (PÇ/H)</label>
-                            <input 
-                              type="number" 
-                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
-                              value={calcData.metaConf || ''} 
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                                setCalcData(prev => ({
-                                  ...prev, 
-                                  metaConf: val,
-                                  conf: calculateSugerido(prev.pecas, prev.jornada, val),
-                                  aux: calculateSugerido(prev.pecas, prev.jornada, prev.metaAux)
-                                }));
-                              }} 
-                            />
-                          </div>
+                          {selectedEnv !== 'separacao' && (
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Meta {confLabel.substring(0, 4)}. (PÇ/H)</label>
+                              <input 
+                                type="number" 
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xl text-slate-700 focus:border-red-800 focus:bg-white outline-none transition-all" 
+                                value={calcData.metaConf || ''} 
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                  setCalcData(prev => ({
+                                    ...prev, 
+                                    metaConf: val,
+                                    conf: calculateSugerido(prev.pecas, prev.jornada, val),
+                                    aux: calculateSugerido(prev.pecas, prev.jornada, prev.metaAux)
+                                  }));
+                                }} 
+                              />
+                            </div>
+                          )}
                           <div className="space-y-3">
                             <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">Meta Aux. (PÇ/H)</label>
                             <input 
@@ -980,28 +1002,30 @@ export default function App() {
                       </div>
                     </div>
                     <div className="space-y-5">
-                      <div className="bg-blue-900 p-10 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
-                        <p className="text-[10px] font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Conferentes (Ajustável)</p>
-                        <input 
-                          type="number" 
-                          className="w-full bg-transparent text-7xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
-                          value={calcData.conf || ''} 
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? 0 : Number(e.target.value);
-                            setCalcData(prev => {
-                              const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaConf);
-                              return {
-                                ...prev, 
-                                conf: val,
-                                pecas: newPecas,
-                                aux: val === 0 ? prev.aux : calculateSugerido(newPecas, prev.jornada, prev.metaAux)
-                              };
-                            });
-                          }}
-                        />
-                        <p className="text-[9px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
-                      </div>
+                      {selectedEnv !== 'separacao' && (
+                        <div className="bg-blue-900 p-10 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
+                          <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
+                          <p className="text-[10px] font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">{confLabel}s (Ajustável)</p>
+                          <input 
+                            type="number" 
+                            className="w-full bg-transparent text-7xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
+                            value={calcData.conf || ''} 
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Number(e.target.value);
+                              setCalcData(prev => {
+                                const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaConf);
+                                return {
+                                  ...prev, 
+                                  conf: val,
+                                  pecas: newPecas,
+                                  aux: val === 0 ? prev.aux : calculateSugerido(newPecas, prev.jornada, prev.metaAux)
+                                };
+                              });
+                            }}
+                          />
+                          <p className="text-[9px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
+                        </div>
+                      )}
                       <div className="bg-red-800 p-10 rounded-3xl text-white shadow-xl shadow-red-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
                         <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
                         <p className="text-[10px] font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Auxiliares (Ajustável)</p>
@@ -1064,16 +1088,18 @@ export default function App() {
                       />
                       <p className="text-[8px] font-bold text-slate-500 uppercase">HORAS / DIA</p>
                     </div>
-                    <div className="space-y-4 text-center">
-                      <label className="text-[10px] font-bold uppercase text-indigo-400 tracking-widest leading-none block h-4">Alvo Conf.</label>
-                      <input 
-                        type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
-                        value={metas.CONFERENTE || ''} 
-                        onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                      />
-                      <p className="text-[8px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
-                    </div>
+                    {selectedEnv !== 'separacao' && (
+                      <div className="space-y-4 text-center">
+                        <label className="text-[10px] font-bold uppercase text-indigo-400 tracking-widest leading-none block h-4">Alvo {confLabel.substring(0, 4)}.</label>
+                        <input 
+                          type="number" 
+                          className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          value={metas.CONFERENTE || ''} 
+                          onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                        />
+                        <p className="text-[8px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
+                      </div>
+                    )}
                     <div className="space-y-4 text-center">
                       <label className="text-[10px] font-bold uppercase text-red-400 tracking-widest leading-none block h-4">Alvo Auxiliares</label>
                       <input 
