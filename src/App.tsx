@@ -76,8 +76,8 @@ const calculateProdReal = (pecas: number, qtdPessoas: number, jornada: number) =
 
 const calculateSugerido = (pecas: number, jornada: number, meta: number) => {
   if (!pecas || !jornada || !meta) return 0;
-  // Usamos floor para sugerir a quantidade de pessoas que mantém a produtividade ACIMA da meta
-  return Math.max(1, Math.floor(pecas / (jornada * meta)));
+  // Usamos ceil para garantir que a quantidade de pessoas cubra o volume sem ultrapassar o esforço padrão (meta)
+  return Math.max(1, Math.ceil(pecas / (jornada * meta)));
 };
 
 export default function App() {
@@ -92,8 +92,14 @@ export default function App() {
   const [data, setData] = useState<{ atual: DayData[] }>(() => ({ atual: generateWeeklyStructure() }));
   const [allData, setAllData] = useState<Record<string, { atual: DayData[], metas: Metas }>>({});
 
-  const [manualGlobalHC, setManualGlobalHC] = useState<number | null>(null);
-  const [manualGlobalJornada, setManualGlobalJornada] = useState<number>(9);
+  const [manualGlobalHC, setManualGlobalHC] = useState<number | null>(() => {
+    const saved = localStorage.getItem('logistics_manual_global_hc');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [manualGlobalJornada, setManualGlobalJornada] = useState<number>(() => {
+    const saved = localStorage.getItem('logistics_manual_global_jornada');
+    return saved ? JSON.parse(saved) : 9;
+  });
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -108,6 +114,14 @@ export default function App() {
   });
   const [filterMode, setFilterMode] = useState<'todos' | 'ok' | 'pendente'>('todos');
   const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | string>('semana');
+
+  useEffect(() => {
+    localStorage.setItem('logistics_manual_global_hc', JSON.stringify(manualGlobalHC));
+  }, [manualGlobalHC]);
+
+  useEffect(() => {
+    localStorage.setItem('logistics_manual_global_jornada', JSON.stringify(manualGlobalJornada));
+  }, [manualGlobalJornada]);
 
   // --- Data Sync ---
   useEffect(() => {
