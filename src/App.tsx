@@ -20,6 +20,7 @@ import {
   Menu, 
   X, 
   Check, 
+  CheckCircle2,
   AlertTriangle, 
   Circle
 } from 'lucide-react';
@@ -222,6 +223,7 @@ export default function App() {
       const envs = Object.keys(allData);
       let totalPecasGeneral = 0;
       let totalHeadcountGeneral = 0;
+      let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
       
       const envStats = envs.map(env => {
@@ -231,11 +233,18 @@ export default function App() {
           : envData.filter(d => d.id === dashboardDateFilter);
         
         const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
+        const totalMH = targetData.reduce((acc, curr) => {
+           const jornada = Number(curr.jornada) || 9;
+           const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
+           return acc + (jornada * hc);
+        }, 0);
+
         const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
         const count = ativos.length || 1;
         
         const factor = isMonthView ? 4 : isYearView ? 48 : 1;
         totalPecasGeneral += totalPecas * factor;
+        totalManHoursGeneral += totalMH * factor;
         
         const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
         const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
@@ -252,16 +261,19 @@ export default function App() {
         };
       });
 
+      const productivity = totalManHoursGeneral > 0 ? Number((totalPecasGeneral / totalManHoursGeneral).toFixed(2)) : 0;
+
       return {
         totalPecas: totalPecasGeneral,
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
         diasAtivos: ativosCountGeneral,
+        productivity,
         envStats,
         isDayView,
         isWeekView,
         isMonthView,
         isYearView,
-        realPecas: totalPecasGeneral // In general view, we show the total directly
+        realPecas: totalPecasGeneral
       };
     }
 
@@ -631,26 +643,29 @@ export default function App() {
 
                       <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Efetivo Total</p>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Produtividade Global</p>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-blue-900 tracking-tighter">{stats.mediaHeadcountTotal}</span>
-                            <span className="text-sm font-bold text-slate-400 uppercase">Colaboradores</span>
+                            <span className={`text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {stats.productivity}
+                            </span>
+                            <span className="text-sm font-bold text-slate-400 uppercase">PÇ / H</span>
                           </div>
                         </div>
                         <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-blue-900" />
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Médio / Período</span>
+                             <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          <Zap size={24} className="text-slate-100 group-hover:text-blue-100 transition-colors" />
+                          {stats.productivity >= 65 ? <CheckCircle2 size={24} className="text-emerald-100" /> : <AlertTriangle size={24} className="text-rose-100" />}
                         </div>
                       </div>
 
                       <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Engajamento Operacional</p>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Efetivo Consolidado</p>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-emerald-600 tracking-tighter">100%</span>
+                            <span className="text-5xl font-black text-blue-900 tracking-tighter">{stats.mediaHeadcountTotal}</span>
+                            <span className="text-sm font-bold text-slate-400 uppercase">Colaboradores</span>
                           </div>
                         </div>
                         <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
