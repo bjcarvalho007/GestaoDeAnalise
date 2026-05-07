@@ -36,6 +36,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
+type Environment = 'recebimento' | 'separacao';
+
 interface DayData {
   id: string;
   dia: string;
@@ -78,31 +80,14 @@ const calculateSugerido = (pecas: number, jornada: number, meta: number) => {
 
 export default function App() {
   // --- States ---
+  const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [metas, setMetas] = useState<Metas>(() => {
-    const defaultMetas = { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 };
-    const saved = localStorage.getItem('logistics_metas_v3');
-    if (!saved) return defaultMetas;
-    try {
-      return { ...defaultMetas, ...JSON.parse(saved) };
-    } catch {
-      return defaultMetas;
-    }
-  });
+  const [metas, setMetas] = useState<Metas>(() => ({ CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 }));
 
-  const [data, setData] = useState<{ atual: DayData[] }>(() => {
-    const saved = localStorage.getItem('logistics_data_v3');
-    if (!saved) return { atual: generateWeeklyStructure() };
-    try {
-      const parsed = JSON.parse(saved);
-      return { atual: parsed.atual || generateWeeklyStructure() };
-    } catch {
-      return { atual: generateWeeklyStructure() };
-    }
-  });
+  const [data, setData] = useState<{ atual: DayData[] }>(() => ({ atual: generateWeeklyStructure() }));
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -116,14 +101,57 @@ export default function App() {
     aux: 7
   });
   const [filterMode, setFilterMode] = useState<'todos' | 'ok' | 'pendente'>('todos');
-  const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | string>('semana');
+  const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | string>('semana');
 
   // --- Effects ---
+  useEffect(() => {
+    if (!selectedEnv) return;
+
+    const defaultMetas = { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 };
+    const metasKey = `logistics_${selectedEnv}_metas_v4`;
+    const dataKey = `logistics_${selectedEnv}_data_v4`;
+
+    // Migration from old keys to 'recebimento' if it's the first time
+    if (selectedEnv === 'recebimento') {
+      const oldMetas = localStorage.getItem('logistics_metas_v3');
+      const oldData = localStorage.getItem('logistics_data_v3');
+      if (oldMetas && !localStorage.getItem(metasKey)) localStorage.setItem(metasKey, oldMetas);
+      if (oldData && !localStorage.getItem(dataKey)) localStorage.setItem(dataKey, oldData);
+    }
+
+    const savedMetas = localStorage.getItem(metasKey);
+    const savedData = localStorage.getItem(dataKey);
+
+    if (savedMetas) {
+      try { setMetas({ ...defaultMetas, ...JSON.parse(savedMetas) }); } catch (e) { console.error(e); }
+    } else {
+      setMetas(defaultMetas);
+    }
+
+    if (savedData) {
+      try { setData(JSON.parse(savedData)); } catch (e) { console.error(e); }
+    } else {
+      setData({ atual: generateWeeklyStructure() });
+    }
+  }, [selectedEnv]);
+
   useEffect(() => {
     // Splash screen animation delay
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (selectedEnv) {
+      localStorage.setItem(`logistics_${selectedEnv}_data_v4`, JSON.stringify(data));
+    }
+  }, [data, selectedEnv]);
+
+  useEffect(() => {
+    if (selectedEnv) {
+      localStorage.setItem(`logistics_${selectedEnv}_metas_v4`, JSON.stringify(metas));
+    }
+  }, [metas, selectedEnv]);
 
   useEffect(() => {
     setCalcData(prev => {
@@ -141,14 +169,6 @@ export default function App() {
         aux: calculateSugerido(newPecasGoal, newJornada, newMetaAux)
       };
     });
-  }, [metas]);
-
-  useEffect(() => {
-    localStorage.setItem('logistics_data_v3', JSON.stringify(data));
-  }, [data]);
-
-  useEffect(() => {
-    localStorage.setItem('logistics_metas_v3', JSON.stringify(metas));
   }, [metas]);
 
   // --- Derived Data ---
@@ -170,13 +190,17 @@ export default function App() {
   }, [data.atual, filterMode, metas]);
 
   const stats = useMemo(() => {
-    const targetData = dashboardDateFilter === 'semana' 
+    const targetData = (dashboardDateFilter === 'semana' || dashboardDateFilter === 'mes')
       ? data.atual 
       : data.atual.filter(d => d.id === dashboardDateFilter);
 
     const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
     const ativos = targetData.filter(i => i.pecas > 0);
     const count = ativos.length || 1;
+    
+    // Se for visão de mês, vamos projetar o mês baseado na média semanal (considerando 4 semanas)
+    const factor = dashboardDateFilter === 'mes' ? 4 : 1;
+    const displayTotalPecas = totalPecas * factor;
     
     const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
       const p = calculateProdReal(curr.pecas, curr.conferentes, curr.jornada);
@@ -193,14 +217,15 @@ export default function App() {
     const mediaHeadcountTotal = Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
 
     return { 
-      totalPecas, 
-      diasAtivos: ativos.length, 
+      totalPecas: displayTotalPecas, 
+      diasAtivos: ativos.length * (dashboardDateFilter === 'mes' ? 4 : 1), 
       mediaRealConf, 
       mediaRealAux, 
       mediaHeadcountConf, 
       mediaHeadcountAux, 
       mediaHeadcountTotal,
-      isDayView: dashboardDateFilter !== 'semana'
+      isDayView: dashboardDateFilter !== 'semana' && dashboardDateFilter !== 'mes',
+      isMonthView: dashboardDateFilter === 'mes'
     };
   }, [data, dashboardDateFilter]);
 
@@ -220,6 +245,58 @@ export default function App() {
 
   return (
     <>
+      <AnimatePresence>
+        {(!selectedEnv && !showSplash) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#F1F5F9] flex items-center justify-center p-6"
+          >
+            <div className="max-w-4xl w-full text-center space-y-12">
+              <div className="space-y-4">
+                <div className="w-20 h-1.5 bg-blue-900 rounded-full mx-auto" />
+                <h2 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">
+                  Escolha o seu <span className="text-blue-900">Ambiente</span>
+                </h2>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Selecione o fluxo de operação para iniciar a gestão</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-indigo-600', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
+                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' }
+                ].map(env => (
+                  <button
+                    key={env.id}
+                    onClick={() => setSelectedEnv(env.id as Environment)}
+                    className="group bg-white p-10 rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-xl hover:shadow-2xl transition-all duration-500 text-left flex flex-col gap-6 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors" />
+                    <div className={`${env.color} w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 group-hover:scale-110 transition-transform`}>
+                      <env.icon size={30} />
+                    </div>
+                    <div className="relative z-10">
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{env.label}</h3>
+                      <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed">{env.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-900 font-bold uppercase tracking-widest text-[10px] mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Acessar agora <Check size={14} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <footer className="pt-12 text-center border-t border-slate-200">
+                <p className="text-[9px] font-bold text-slate-400 gap-2 flex items-center justify-center uppercase tracking-[0.4em]">
+                   Sistema Unificado de Logística <Circle size={4} className="fill-slate-400" /> 2026
+                </p>
+              </footer>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showSplash && (
           <motion.div 
@@ -257,14 +334,18 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-20">
               {/* Logo Area */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform duration-300">
+              <button 
+                onClick={() => setSelectedEnv(null)}
+                className="flex items-center gap-3 group text-left"
+              >
+                <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
                   <ArrowRightLeft className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white font-black tracking-tight uppercase text-base leading-none">Gestão integrada</span>
+                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1">Ambiente: {selectedEnv}</span>
                 </div>
-              </div>
+              </button>
 
               {/* Desktop Navigation */}
               <nav className="hidden md:flex items-center gap-1">
@@ -353,7 +434,7 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-1 w-8 bg-blue-900 rounded-full" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Ambiente Integrado</span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Ambiente {selectedEnv}</span>
                 </div>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
                   {activeTab === 'dashboard' ? 'Sumário de Performance' : 
@@ -389,7 +470,7 @@ export default function App() {
             <div className="hidden print:block mb-8 border-b-2 border-slate-900 pb-6">
               <div className="flex justify-between items-end">
                 <div>
-                  <h1 className="text-4xl font-black uppercase tracking-tighter text-slate-900">Relatório Operacional CDTO</h1>
+                  <h1 className="text-4xl font-black uppercase tracking-tighter text-slate-900">Relatório Operacional CDTO - {selectedEnv?.toUpperCase()}</h1>
                   <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Status de Desempenho e Metas Logísticas</p>
                 </div>
                 <div className="text-right">
@@ -404,19 +485,27 @@ export default function App() {
               <div className="space-y-8 animate-in duration-500 print:space-y-6">
                 {/* Date Filter Bar */}
                 <div className="flex flex-wrap items-center gap-3 no-print bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
-                   <button 
-                     onClick={() => setDashboardDateFilter('semana')}
-                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
-                   >
-                     Semana Toda
-                   </button>
+                   <div className="flex gap-1">
+                     <button 
+                       onClick={() => setDashboardDateFilter('semana')}
+                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                     >
+                       Semana
+                     </button>
+                     <button 
+                       onClick={() => setDashboardDateFilter('mes')}
+                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                     >
+                       Mês
+                     </button>
+                   </div>
                    <div className="w-px h-4 bg-slate-200 mx-1" />
                    <div className="flex gap-1">
                      {data.atual.map(dia => (
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
-                         className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                         className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
                        </button>
@@ -426,49 +515,57 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stats.isDayView ? 'Equipe Real' : 'Resumo Equipe'}</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {stats.isDayView ? 'Equipe Real' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
+                    </span>
                     <div className="flex items-end justify-between mt-2">
                        <div>
                          <span className="text-3xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
-                         <p className="text-[9px] font-black text-slate-400 uppercase mt-1">{stats.isDayView ? 'Homens Real' : 'Homens Médio'}</p>
+                         <p className="text-[11px] font-black text-slate-400 uppercase mt-1">
+                           {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
+                         </p>
                        </div>
                        <div className="text-right">
-                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">C: {stats.mediaHeadcountConf}</p>
-                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">A: {stats.mediaHeadcountAux}</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">C: {stats.mediaHeadcountConf}</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">A: {stats.mediaHeadcountAux}</p>
                        </div>
                     </div>
                   </div>
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Prod. Conferente</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. Conferente</span>
                     <div className="flex items-end justify-between mt-2">
                       <div>
                         <span className="text-3xl font-black text-slate-800">{stats.mediaRealConf}</span>
-                        <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                        <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
                       </div>
-                      <span className={`text-[10px] font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
-                        {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={12} className="ml-1"/> : <AlertTriangle size={12} className="ml-1"/>}
+                        {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
                       </span>
                     </div>
                   </div>
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
                     <div className="flex items-end justify-between mt-2">
                       <div>
                         <span className="text-3xl font-black text-slate-800">{stats.mediaRealAux}</span>
-                        <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
+                        <p className="text-[11px] font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
                       </div>
-                      <span className={`text-[10px] font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      <span className={`text-xs font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
-                        {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={12} className="ml-1"/> : <AlertTriangle size={12} className="ml-1"/>}
+                        {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={14} className="ml-1"/> : <AlertTriangle size={14} className="ml-1"/>}
                       </span>
                     </div>
                   </div>
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stats.isDayView ? 'Volume Real' : 'Volume Período'}</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {stats.isDayView ? 'Volume Real' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
+                    </span>
                     <div className="flex items-end justify-between mt-2">
                       <span className="text-3xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</span>
-                      <span className="text-[10px] font-bold text-emerald-500 mb-1 tracking-tighter uppercase">{stats.isDayView ? 'Hoje' : `${stats.diasAtivos} Dias`}</span>
+                      <span className="text-xs font-bold text-emerald-500 mb-1 tracking-tighter uppercase">
+                        {stats.isDayView ? 'Hoje' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -574,7 +671,7 @@ export default function App() {
               <>
                 <div className="flex items-center gap-3 no-print mb-6 bg-slate-100 p-2 rounded-2xl w-fit">
                 <select 
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 >
@@ -583,7 +680,7 @@ export default function App() {
                   ))}
                 </select>
                 <select 
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                 >
@@ -598,29 +695,29 @@ export default function App() {
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={20}/></div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Volume Semanal</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Volume Semanal</p>
                       <p className="text-xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm border-l-4 border-l-red-800">
                     <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-800"><Activity size={20}/></div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prod. Média (H)</p>
-                      <p className="text-xl font-black text-slate-800">{stats.mediaRealConf} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Prod. Média (H)</p>
+                      <p className="text-xl font-black text-slate-800">{stats.mediaRealConf} <span className="text-xs text-slate-400">PÇ/H</span></p>
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-5 shadow-sm">
                     <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600"><CalendarCheck size={20}/></div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dias com Atividade</p>
-                      <p className="text-xl font-black text-slate-800">{stats.diasAtivos} <span className="text-[10px] text-slate-400">DIAS</span></p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dias com Atividade</p>
+                      <p className="text-xl font-black text-slate-800">{stats.diasAtivos} <span className="text-xs text-slate-400">DIAS</span></p>
                     </div>
                   </div>
                 </div>
 
                 {/* Filtering Bar */}
                 <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 hidden sm:inline">Filtrar por Status:</span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2 hidden sm:inline">Filtrar por Status:</span>
                   <div className="flex bg-slate-100 p-1 rounded-xl">
                     {[
                       { id: 'todos', label: 'Todos' },
@@ -630,7 +727,7 @@ export default function App() {
                       <button
                         key={option.id}
                         onClick={() => setFilterMode(option.id as any)}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
                           filterMode === option.id 
                           ? 'bg-white text-indigo-600 shadow-sm' 
                           : 'text-slate-500 hover:text-slate-800'
@@ -995,7 +1092,13 @@ export default function App() {
 
           <footer className="mt-auto p-12 text-center no-print">
             <div className="w-12 h-0.5 bg-slate-200 mx-auto mb-6 opacity-50" />
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.4em]">Gestão integrada • 2026</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.4em]">Gestão integrada • {selectedEnv} • 2026</p>
+            <button 
+              onClick={() => setSelectedEnv(null)}
+              className="mt-4 text-[10px] font-black text-blue-900 uppercase tracking-widest hover:underline"
+            >
+              Trocar Ambiente
+            </button>
           </footer>
 
           {/* Floating Action Button for Export */}
