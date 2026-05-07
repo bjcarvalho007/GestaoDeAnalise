@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #1e3a8a;
+  --color-accent: #991b1b;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer utilities {
+  .no-print {
+    @media print {
+      display: none !important;
+    }
+  }
+
+  .print-only {
+    display: none;
+    @media print {
+      display: block;
+    }
+  }
+
+  @media print {
+    body {
+      background: white !important;
+    }
+    
+    .print-container {
+      width: 100% !important;
+      max-width: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .print-break-inside-avoid {
+      break-inside: avoid;
+    }
+
+    .print-grid-cols-1 {
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+    
+    .print-m-0 {
+      margin: 0 !important;
+    }
+
+    .print-p-0 {
+      padding: 0 !important;
+    }
+    
+    .print-shadow-none {
+      box-shadow: none !important;
+    }
+
+    .print-border {
+      border: 1px solid #e2e8f0 !important;
+    }
+  }
+}
+
+.glass-card {
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.day-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-minimal {
+  background: #f1f5f9;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.input-minimal:focus {
+  background: white;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1);
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
