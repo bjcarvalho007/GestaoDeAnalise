@@ -193,16 +193,21 @@ export default function App() {
   }, [data.atual, filterMode, metas]);
 
   const stats = useMemo(() => {
-    const targetData = (dashboardDateFilter === 'semana' || dashboardDateFilter === 'mes')
+    const isDayView = dashboardDateFilter !== 'semana' && dashboardDateFilter !== 'mes' && dashboardDateFilter !== 'ano';
+    const isWeekView = dashboardDateFilter === 'semana';
+    const isMonthView = dashboardDateFilter === 'mes';
+    const isYearView = dashboardDateFilter === 'ano';
+
+    const targetData = (isWeekView || isMonthView || isYearView)
       ? data.atual 
       : data.atual.filter(d => d.id === dashboardDateFilter);
 
     const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
-    const ativos = targetData.filter(i => i.pecas > 0);
+    const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
     const count = ativos.length || 1;
     
-    // Se for visão de mês, vamos projetar o mês baseado na média semanal (considerando 4 semanas)
-    const factor = dashboardDateFilter === 'mes' ? 4 : 1;
+    // Fatores de projeção (ajustável conforme necessidade)
+    const factor = isMonthView ? 4 : isYearView ? 48 : 1;
     const displayTotalPecas = totalPecas * factor;
     
     const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
@@ -224,14 +229,16 @@ export default function App() {
 
     return { 
       totalPecas: displayTotalPecas, 
-      diasAtivos: ativos.length * (dashboardDateFilter === 'mes' ? 4 : 1), 
+      diasAtivos: ativos.length * factor, 
       mediaRealConf, 
       mediaRealAux, 
       mediaHeadcountConf, 
       mediaHeadcountAux, 
       mediaHeadcountTotal,
-      isDayView: dashboardDateFilter !== 'semana' && dashboardDateFilter !== 'mes',
-      isMonthView: dashboardDateFilter === 'mes'
+      isDayView,
+      isWeekView,
+      isMonthView,
+      isYearView
     };
   }, [data, dashboardDateFilter, selectedEnv]);
 
@@ -490,28 +497,34 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8 animate-in duration-500 print:space-y-6">
                 {/* Date Filter Bar */}
-                <div className="flex flex-wrap items-center gap-3 no-print bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
-                   <div className="flex gap-1">
+                <div className="flex flex-wrap items-center gap-4 no-print bg-white p-3 rounded-2xl border border-slate-200 shadow-sm w-fit">
+                   <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
                      <button 
                        onClick={() => setDashboardDateFilter('semana')}
-                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Semana
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('mes')}
-                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Mês
                      </button>
+                     <button 
+                       onClick={() => setDashboardDateFilter('ano')}
+                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                     >
+                       Ano
+                     </button>
                    </div>
-                   <div className="w-px h-4 bg-slate-200 mx-1" />
-                   <div className="flex gap-1">
+                   <div className="w-px h-6 bg-slate-200 mx-1" />
+                   <div className="flex gap-1 overflow-x-auto max-w-[300px] sm:max-w-none pb-1 sm:pb-0">
                      {data.atual.map(dia => (
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
-                         className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                         className={`px-3 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all min-w-[50px] ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
                        </button>
@@ -519,10 +532,33 @@ export default function App() {
                    </div>
                 </div>
 
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
+                    <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Diário</p>
+                        <p className="text-xl font-black text-indigo-900">
+                          {stats.isDayView 
+                            ? (data.atual.find(d => d.id === dashboardDateFilter)?.pecas || 0).toLocaleString()
+                            : 'Selecc. Dia'}
+                        </p>
+                    </div>
+                    <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
+                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal</p>
+                        <p className="text-xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
+                        <p className="text-xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
+                        <p className="text-xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      {stats.isDayView ? 'Equipe Real' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
+                      {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                     </span>
                     <div className="flex items-end justify-between mt-2">
                        <div>
@@ -569,12 +605,12 @@ export default function App() {
                   </div>
                   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      {stats.isDayView ? 'Volume Real' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
+                      {stats.isDayView ? 'Volume Real' : stats.isYearView ? 'Volume Est. Ano' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
                     </span>
                     <div className="flex items-end justify-between mt-2">
                       <span className="text-3xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</span>
                       <span className="text-xs font-bold text-emerald-500 mb-1 tracking-tighter uppercase">
-                        {stats.isDayView ? 'Hoje' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
+                        {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
                       </span>
                     </div>
                   </div>
