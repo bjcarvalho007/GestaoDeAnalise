@@ -108,11 +108,10 @@ export default function App() {
   const [filterMode, setFilterMode] = useState<'todos' | 'ok' | 'pendente'>('todos');
   const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | string>('semana');
 
-  // --- Effects ---
+  // --- Data Sync ---
   useEffect(() => {
-    if (!selectedEnv) return;
-
-    if (selectedEnv === 'geral') {
+    // Global sync function to fetch all data from localStorage
+    const syncAllData = () => {
       const environments: ('recebimento' | 'separacao')[] = ['recebimento', 'separacao'];
       const combined: Record<string, { atual: DayData[], metas: Metas }> = {};
       
@@ -128,34 +127,26 @@ export default function App() {
         };
       });
       setAllData(combined);
+      return combined;
+    };
+
+    if (!selectedEnv) {
+      syncAllData();
       return;
     }
 
-    const defaultMetas = { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 };
-    const metasKey = `logistics_${selectedEnv}_metas_v4`;
-    const dataKey = `logistics_${selectedEnv}_data_v4`;
-
-    // Migration from old keys to 'recebimento' if it's the first time
-    if (selectedEnv === 'recebimento') {
-      const oldMetas = localStorage.getItem('logistics_metas_v3');
-      const oldData = localStorage.getItem('logistics_data_v3');
-      if (oldMetas && !localStorage.getItem(metasKey)) localStorage.setItem(metasKey, oldMetas);
-      if (oldData && !localStorage.getItem(dataKey)) localStorage.setItem(dataKey, oldData);
+    if (selectedEnv === 'geral') {
+      syncAllData();
+      return;
     }
 
-    const savedMetas = localStorage.getItem(metasKey);
-    const savedData = localStorage.getItem(dataKey);
-
-    if (savedMetas) {
-      try { setMetas({ ...defaultMetas, ...JSON.parse(savedMetas) }); } catch (e) { console.error(e); }
-    } else {
-      setMetas(defaultMetas);
-    }
-
-    if (savedData) {
-      try { setData(JSON.parse(savedData)); } catch (e) { console.error(e); }
-    } else {
-      setData({ atual: generateWeeklyStructure() });
+    // Individual environment selection
+    const currentCombined = syncAllData();
+    const envData = currentCombined[selectedEnv as keyof typeof currentCombined];
+    
+    if (envData) {
+      setMetas(envData.metas);
+      setData({ atual: envData.atual });
     }
   }, [selectedEnv]);
 
@@ -358,43 +349,43 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-[#F1F5F9] flex items-center justify-center p-6"
           >
-            <div className="max-w-4xl w-full text-center space-y-12">
-              <div className="space-y-4">
-                <div className="w-20 h-1.5 bg-blue-900 rounded-full mx-auto" />
-                <h2 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">
+            <div className="max-w-4xl w-full text-center space-y-8 sm:space-y-12">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-blue-900 rounded-full mx-auto" />
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">
                   Escolha o seu <span className="text-blue-900">Ambiente</span>
                 </h2>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Selecione o fluxo de operação para iniciar a gestão</p>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs px-4">Selecione o fluxo de operação para iniciar a gestão</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-h-[60vh] md:max-h-none overflow-y-auto md:overflow-visible p-2">
                 {[
                   { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-indigo-600', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
                   { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
-                  { id: 'geral', label: 'Gestão Geral', icon: BarChart2, color: 'bg-blue-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise de performance.' }
+                  { id: 'geral', label: 'Gestão Geral', icon: BarChart2, color: 'bg-blue-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
                 ].map(env => (
                   <button
                     key={env.id}
                     onClick={() => setSelectedEnv(env.id as Environment)}
-                    className="group bg-white p-10 rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-xl hover:shadow-2xl transition-all duration-500 text-left flex flex-col gap-6 relative overflow-hidden"
+                    className="group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-lg hover:shadow-2xl transition-all duration-500 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0"
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors" />
-                    <div className={`${env.color} w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 group-hover:scale-110 transition-transform`}>
-                      <env.icon size={30} />
+                    <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 group-hover:bg-blue-50 transition-colors" />
+                    <div className={`${env.color} w-12 sm:w-16 h-12 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 group-hover:scale-110 transition-transform`}>
+                      <env.icon size={24} className="sm:size-[30px]" />
                     </div>
                     <div className="relative z-10">
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{env.label}</h3>
-                      <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed">{env.description}</p>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">{env.label}</h3>
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1.5 sm:mt-2 leading-relaxed">{env.description}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-blue-900 font-bold uppercase tracking-widest text-[10px] mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 text-blue-900 font-bold uppercase tracking-widest text-[9px] sm:text-[10px] mt-2 sm:mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
                       Acessar agora <Check size={14} />
                     </div>
                   </button>
                 ))}
               </div>
               
-              <footer className="pt-12 text-center border-t border-slate-200">
-                <p className="text-[9px] font-bold text-slate-400 gap-2 flex items-center justify-center uppercase tracking-[0.4em]">
+              <footer className="pt-8 sm:pt-12 text-center border-t border-slate-200">
+                <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 gap-2 flex items-center justify-center uppercase tracking-[0.3em] sm:tracking-[0.4em]">
                    Sistema Unificado de Logística <Circle size={4} className="fill-slate-400" /> 2026
                 </p>
               </footer>
@@ -436,71 +427,28 @@ export default function App() {
         )}
       </AnimatePresence>      <div className="min-h-screen flex flex-col bg-[#F1F5F9] font-sans">
         {/* TOP NAVIGATION BAR */}
-        <header className="sticky top-0 z-50 bg-[#1E293B] text-white shadow-xl no-print">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-20">
-              {/* Logo Area */}
-              <button 
-                onClick={() => setSelectedEnv(null)}
-                className="flex items-center gap-3 group text-left"
-              >
-                <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
-                  <ArrowRightLeft className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-white font-black tracking-tight uppercase text-xl leading-none">Gestão integrada</span>
-                  <span className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-1.5 font-mono">
-                    {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
-                  </span>
-                </div>
-              </button>
-
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex items-center gap-1">
-                {[
-                  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                  { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
-                  { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
-                  { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
-                ].filter(item => !item.hidden).map(item => (
-                  <button 
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 px-6 py-4 rounded-xl text-base font-bold transition-all duration-300 group ${
-                      activeTab === item.id 
-                      ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 shadow-inner' 
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
-                    }`}
-                  >
-                    <item.icon size={20} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
-                    <span className="tracking-wide uppercase">{item.label}</span>
-                  </button>
-                ))}
-              </nav>
-
-              {/* Right Side Actions Empty - Moved to FAB */}
-              <div className="hidden md:flex items-center gap-4">
-              </div>
-
-              {/* Mobile Menu Button */}
-              <div className="md:hidden">
-                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2.5 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
-                  {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        {selectedEnv && (
+          <header className="sticky top-0 z-50 bg-[#1E293B] text-white shadow-xl no-print">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-20">
+                {/* Logo Area */}
+                <button 
+                  onClick={() => setSelectedEnv(null)}
+                  className="flex items-center gap-3 group text-left"
+                >
+                  <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
+                    <ArrowRightLeft className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-white font-black tracking-tight uppercase text-xl leading-none">Gestão integrada</span>
+                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-1.5 font-mono">
+                      {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
+                    </span>
+                  </div>
                 </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Mobile Menu Dropdown */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="md:hidden border-t border-slate-800 bg-[#1E293B] overflow-hidden"
-              >
-                <div className="px-4 py-6 space-y-2">
+                {/* Desktop Navigation */}
+                <nav className="hidden md:flex items-center gap-1">
                   {[
                     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                     { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
@@ -509,54 +457,95 @@ export default function App() {
                   ].filter(item => !item.hidden).map(item => (
                     <button 
                       key={item.id}
-                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all ${
+                      onClick={() => setActiveTab(item.id)}
+                      className={`flex items-center gap-2 px-6 py-4 rounded-xl text-base font-bold transition-all duration-300 group ${
                         activeTab === item.id 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'text-slate-400 hover:bg-slate-800'
+                        ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 shadow-inner' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
                       }`}
                     >
-                      <item.icon size={20} />
-                      <span className="uppercase tracking-widest">{item.label}</span>
+                      <item.icon size={20} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                      <span className="tracking-wide uppercase">{item.label}</span>
                     </button>
                   ))}
-                  <div className="pt-4 mt-2 border-t border-slate-800">
-                    <button 
-                      onClick={() => { window.print(); setIsMobileMenuOpen(false); }} 
-                      className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-400/10"
-                    >
-                      <Printer size={20} />
-                      <span>EXPORTAR RELATÓRIO</span>
-                    </button>
-                  </div>
+                </nav>
+
+                {/* Mobile Menu Button */}
+                <div className="md:hidden">
+                  <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2.5 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
+                    {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                  </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </header>
+              </div>
+            </div>
+
+            {/* Mobile Menu Dropdown */}
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="md:hidden border-t border-slate-800 bg-[#1E293B] overflow-hidden"
+                >
+                  <div className="px-4 py-6 space-y-2">
+                    {[
+                      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                      { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
+                      { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
+                      { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
+                    ].filter(item => !item.hidden).map(item => (
+                      <button 
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all ${
+                          activeTab === item.id 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'text-slate-400 hover:bg-slate-800'
+                        }`}
+                      >
+                        <item.icon size={20} />
+                        <span className="uppercase tracking-widest">{item.label}</span>
+                      </button>
+                    ))}
+                    <div className="pt-4 mt-2 border-t border-slate-800">
+                      <button 
+                        onClick={() => { window.print(); setIsMobileMenuOpen(false); }} 
+                        className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-400/10"
+                      >
+                        <Printer size={20} />
+                        <span>EXPORTAR RELATÓRIO</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </header>
+        )}
 
         <main className="flex-1 min-w-0 overflow-y-auto max-h-screen bg-[#F1F5F9] print:bg-white print:max-h-none print:overflow-visible">
           <div className="p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none">
             {/* Context Header */}
-            <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-4 no-print border-b border-slate-200 pb-8">
-              <div>
+            <div className="mb-6 sm:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print border-b border-slate-200 pb-6 sm:pb-8">
+              <div className="w-full">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-10 bg-blue-900 rounded-full" />
-                  <span className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">
+                  <div className="h-1 w-6 sm:w-10 bg-blue-900 rounded-full" />
+                  <span className="text-[10px] sm:text-sm font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em]">
                     {selectedEnv === 'geral' ? 'Visão Consolidada CDTO' : `Ambiente ${selectedEnv}`}
                   </span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">
+                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
                   {selectedEnv === 'geral' ? 'Control Tower Dashboard' : (
-                    activeTab === 'dashboard' ? 'Sumário de Performance' : 
-                    activeTab === 'input' ? 'Console de Operações' : 
-                    activeTab === 'meta' ? 'Parametrização de Metas' : 'Simular demanda'
+                    activeTab === 'dashboard' ? 'Performance' : 
+                    activeTab === 'input' ? 'Operações' : 
+                    activeTab === 'meta' ? 'Parametrização' : 'Simular'
                   )}
                 </h1>
               </div>
-              <div className="flex items-center gap-3 no-print bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-3 no-print bg-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
                 <select 
-                  className="bg-transparent border-none text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600 appearance-none"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 >
@@ -566,7 +555,7 @@ export default function App() {
                 </select>
                 <div className="w-px h-6 bg-slate-200" />
                 <select 
-                  className="bg-transparent border-none text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600"
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600 appearance-none"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                 >
@@ -574,7 +563,7 @@ export default function App() {
                     <option key={y} value={y} className="text-slate-900">{y}</option>
                   ))}
                 </select>
-                <Calendar size={18} className="text-blue-900 ml-1" />
+                <Calendar size={18} className="text-blue-900" />
               </div>
             </div>
 
@@ -596,34 +585,34 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8 animate-in duration-500 print:space-y-6">
                 {/* Date Filter Bar */}
-                <div className="flex flex-wrap items-center gap-4 no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-sm w-fit">
-                   <div className="flex gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-fit overflow-x-auto">
+                   <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100 flex-shrink-0">
                      <button 
                        onClick={() => setDashboardDateFilter('semana')}
-                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Semana
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('mes')}
-                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Mês
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('ano')}
-                       className={`px-5 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Ano
                      </button>
                    </div>
                    <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
-                   <div className="flex gap-2 overflow-x-auto max-w-[300px] sm:max-w-none pb-1 sm:pb-0">
+                   <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
                      {generateWeeklyStructure().map(dia => (
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
-                         className={`px-4 py-3 rounded-lg text-sm font-black uppercase tracking-widest transition-all min-w-[60px] ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                         className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all min-w-[50px] sm:min-w-[60px] flex-shrink-0 ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
                        </button>
@@ -635,77 +624,77 @@ export default function App() {
                   /* GESTÃO GERAL VIEW */
                   <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Volume Consolidado</p>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Volume Consolidado</p>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
-                            <span className="text-sm font-bold text-slate-400 uppercase">PÇS</span>
+                            <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
+                            <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇS</span>
                           </div>
                         </div>
-                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
+                             <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
                           </div>
-                          <BarChart2 size={24} className="text-slate-100 group-hover:text-indigo-100 transition-colors" />
+                          <BarChart2 size={24} className="text-slate-100 group-hover:text-indigo-100 transition-colors hidden sm:block" />
                         </div>
                       </div>
 
-                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Produtividade Global</p>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Produtividade Global</p>
                           <div className="flex items-baseline gap-2">
-                            <span className={`text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-emerald-600' : 'text-rose-600'}`}>
                               {stats.productivity}
                             </span>
-                            <span className="text-sm font-bold text-slate-400 uppercase">PÇ / H</span>
+                            <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇ / H</span>
                           </div>
                         </div>
-                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
+                             <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          {stats.productivity >= 65 ? <CheckCircle2 size={24} className="text-emerald-100" /> : <AlertTriangle size={24} className="text-rose-100" />}
+                          {stats.productivity >= 65 ? <CheckCircle2 size={22} className="text-emerald-500" /> : <AlertTriangle size={22} className="text-rose-500" />}
                         </div>
                       </div>
 
-                      <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Efetivo Consolidado</p>
-                          <div className="flex flex-col gap-5">
-                            <div className="flex items-center gap-4">
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Efetivo Consolidado</p>
+                          <div className="flex flex-col gap-4 sm:gap-5">
+                            <div className="flex items-center gap-3 sm:gap-4">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-tighter">Equipe (Editar)</span>
+                                <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase mb-1 sm:mb-1.5 tracking-tighter">Equipe (Editar)</span>
                                 <input 
                                   type="number"
                                   value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
                                   onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
-                                  className="w-28 text-4xl font-black text-blue-900 bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
+                                  className="w-20 sm:w-28 text-2xl sm:text-4xl font-black text-blue-900 bg-slate-50 rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
                                   placeholder="0"
                                 />
                               </div>
-                              <span className="text-xs font-bold text-slate-400 uppercase self-end mb-3">Colab.</span>
+                              <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase self-end mb-2 sm:mb-3">Colab.</span>
                             </div>
                             
-                            <div className="pt-5 border-t border-slate-100 flex items-center justify-between">
+                            <div className="pt-4 sm:pt-5 border-t border-slate-100 flex items-center justify-between">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Jornada</span>
+                                <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Jornada</span>
                                 <div className="flex items-center gap-2">
                                   <input 
                                     type="number"
                                     value={manualGlobalJornada}
                                     onChange={(e) => setManualGlobalJornada(Number(e.target.value))}
-                                    className="w-16 text-lg font-black text-slate-600 bg-slate-100 rounded-lg px-3 py-1 border-none focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-12 sm:w-16 text-sm sm:text-lg font-black text-slate-600 bg-slate-100 rounded-lg px-2 sm:px-3 py-1 border-none focus:ring-2 focus:ring-blue-500 outline-none"
                                   />
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">H/Dia</span>
+                                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">H/Dia</span>
                                 </div>
                               </div>
                               
                               <button 
                                 onClick={() => { setManualGlobalHC(null); setManualGlobalJornada(9); }}
-                                className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                                className="p-1 sm:p-2 text-slate-300 hover:text-blue-600 transition-colors"
                                 title="Resetar para real"
                               >
                                 <Settings2 size={16} />
@@ -713,23 +702,23 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-                        <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
+                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Simulação de Impacto</span>
+                             <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Simulação de Impacto</span>
                           </div>
-                          <Activity size={24} className="text-slate-100 group-hover:text-emerald-100 transition-colors" />
+                          <Activity size={20} className="text-emerald-500 opacity-50 hidden sm:block" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden relative">
-                         <div className="absolute top-0 right-0 p-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                       <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden relative">
+                         <div className="absolute top-0 right-0 p-8 hidden sm:block">
                             <Layers className="text-blue-900/5" size={120} />
                          </div>
-                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-8 flex items-center gap-3">
-                           <span className="w-2 h-8 bg-blue-900 rounded-full" />
+                         <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tighter mb-6 sm:mb-8 flex items-center gap-3">
+                           <span className="w-1.5 sm:w-2 h-6 sm:h-8 bg-blue-900 rounded-full" />
                            Distribuição por Área
                          </h3>
                          <div className="space-y-6 relative z-10">
@@ -737,15 +726,15 @@ export default function App() {
                              <div key={env.env} className="group">
                                <div className="flex justify-between items-end mb-2">
                                  <div>
-                                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{env.env === 'recebimento' ? 'Recebimento' : 'Separação'}</p>
-                                   <p className="text-xl font-black text-slate-800">{env.totalPecas.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">PÇS</span></p>
+                                   <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest">{env.env === 'recebimento' ? 'Recebimento' : 'Separação'}</p>
+                                   <p className="text-lg sm:text-xl font-black text-slate-800">{env.totalPecas.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">PÇS</span></p>
                                  </div>
                                  <div className="text-right">
-                                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
-                                   <p className="text-sm font-black text-slate-600">{Math.round((env.totalPecas / stats.totalPecas) * 100)}%</p>
+                                   <p className="text-[9px] sm:text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
+                                   <p className="text-xs sm:text-sm font-black text-slate-600">{Math.round((env.totalPecas / stats.totalPecas) * 100)}%</p>
                                  </div>
                                </div>
-                               <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                               <div className="h-3 sm:h-4 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                                  <motion.div 
                                    initial={{ width: 0 }}
                                    animate={{ width: `${(env.totalPecas / stats.totalPecas) * 100}%` }}
@@ -758,24 +747,24 @@ export default function App() {
                          </div>
                        </div>
 
-                       <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-center text-center space-y-6">
-                         <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-blue-900">
-                           <Calendar className="w-10 h-10" />
+                       <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-center text-center space-y-4 sm:space-y-6">
+                         <div className="w-16 sm:w-20 h-16 sm:h-20 bg-slate-50 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center mx-auto text-blue-900">
+                           <Calendar className="w-8 sm:w-10 h-8 sm:h-10" />
                          </div>
                          <div>
-                           <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Insights de Gestão</h4>
-                           <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed max-w-sm mx-auto">
-                             A operação mantém um fluxo equilibrado entre as áreas. Recomenda-se monitorar o headcount volante para suportar picos de demanda no recebimento.
+                           <h4 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">Insights de Gestão</h4>
+                           <p className="text-slate-500 text-xs sm:text-sm font-medium mt-2 leading-relaxed max-w-sm mx-auto">
+                             Operação em equilíbrio. Monitorar headcount volante para picos de demanda no recebimento.
                            </p>
                          </div>
-                         <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
-                           <div className="p-4 bg-slate-50 rounded-2xl">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dias Analisados</p>
-                             <p className="text-xl font-black text-slate-800">{stats.diasAtivos / (stats.envStats?.length || 1)}</p>
+                         <div className="pt-4 sm:pt-6 border-t border-slate-100 grid grid-cols-2 gap-3 sm:gap-4">
+                           <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl">
+                             <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dias</p>
+                             <p className="text-lg sm:text-xl font-black text-slate-800">{stats.diasAtivos / (stats.envStats?.length || 1)}</p>
                            </div>
-                           <div className="p-4 bg-slate-50 rounded-2xl">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Equipe</p>
-                             <p className="text-xl font-black text-slate-800">{stats.mediaHeadcountTotal}</p>
+                           <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl">
+                             <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Equipe</p>
+                             <p className="text-lg sm:text-xl font-black text-slate-800">{stats.mediaHeadcountTotal}</p>
                            </div>
                          </div>
                        </div>
@@ -784,43 +773,43 @@ export default function App() {
                 ) : (
                   /* STANDARD DASHBOARD VIEW */
                   <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
-                      <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                          <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Total Hoje</p>
-                          <p className="text-2xl font-black text-indigo-900">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 no-print">
+                      <div className="bg-indigo-50/50 p-4 sm:p-5 rounded-2xl border border-indigo-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Hoje</p>
+                          <p className="text-lg sm:text-2xl font-black text-indigo-900">
                             {stats.isDayView 
                               ? stats.realPecas.toLocaleString()
                               : (data.atual.find(d => d.id === new Date().getDay().toString())?.pecas || '0').toLocaleString()
                             }
                           </p>
                       </div>
-                      <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
-                          <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Total Semanal (Real)</p>
-                          <p className="text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                      <div className="bg-emerald-50/50 p-4 sm:p-5 rounded-2xl border border-emerald-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Semana</p>
+                          <p className="text-lg sm:text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
                       </div>
-                      <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
-                          <p className="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Total Mensal (Proj.)</p>
-                          <p className="text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
+                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Mês (Proj.)</p>
+                          <p className="text-lg sm:text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
                       </div>
-                      <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100/50">
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Anual (Proj.)</p>
-                          <p className="text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
+                      <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ano (Proj.)</p>
+                          <p className="text-lg sm:text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
                       </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
+                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                       </span>
-                      <div className="flex items-end justify-between mt-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-3 gap-2">
                         <div>
-                          <span className="text-4xl font-black text-indigo-600">{stats.mediaHeadcountTotal}</span>
-                          <p className="text-xs font-black text-slate-400 uppercase mt-1">
-                            {stats.isDayView ? 'Homens Real' : 'Homens Médio'}
+                          <span className="text-2xl sm:text-4xl font-black text-indigo-600 leading-none">{stats.mediaHeadcountTotal}</span>
+                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">
+                            {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
                         </div>
-                            <div className="text-right">
+                            <div className="text-right sm:block hidden">
                               {selectedEnv === 'separacao' && (
                                 <div className="mb-2">
                                   <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Prod. Média</p>
@@ -835,30 +824,28 @@ export default function App() {
                       </div>
                     </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. {confLabel}</span>
+                      <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                        <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
                         <div className="flex items-end justify-between mt-3">
                           <div>
-                            <span className="text-4xl font-black text-slate-800">{stats.mediaRealConf}</span>
-                            <p className="text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                            <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
+                            <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
                           </div>
-                          <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
-                            {stats.mediaRealConf >= metas.CONFERENTE ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
                           </span>
                         </div>
                       </div>
                     )}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Prod. Auxiliar</span>
+                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
                       <div className="flex items-end justify-between mt-3">
                         <div>
-                          <span className="text-4xl font-black text-slate-800">{stats.mediaRealAux}</span>
-                          <p id="ref-auxiliar-target" className="text-xs font-black text-slate-400 uppercase mt-1">Meta Ref: {metas.AUXILIAR}</p>
+                          <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
+                          <p id="ref-auxiliar-target" className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
                         </div>
-                        <span className={`text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
                           {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
-                          {stats.mediaRealAux >= metas.AUXILIAR ? <Check size={16} className="ml-1"/> : <AlertTriangle size={16} className="ml-1"/>}
                         </span>
                       </div>
                     </div>
@@ -964,24 +951,24 @@ export default function App() {
                     </div>
                   </div>
 
-                    <div className="bg-white rounded-[2rem] p-10 border border-slate-200 shadow-xl print:shadow-none print:p-6 print:break-inside-avoid">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-10 border border-slate-200 shadow-xl print:shadow-none print:p-6 print:break-inside-avoid">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
                       <div className="text-center md:text-left">
-                        <h3 className="text-xl font-bold text-slate-800 uppercase flex items-center gap-2 justify-center md:justify-start">
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-800 uppercase flex items-center gap-2 justify-center md:justify-start">
                           RESUMO DE METAS
                         </h3>
-                        <p className="text-slate-500 text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
+                        <p className="text-slate-500 text-[10px] sm:text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
                       </div>
-                      <div className="flex gap-4">
+                      <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
                         {selectedEnv !== 'separacao' && (
-                          <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-2xl min-w-[160px] text-center">
-                            <p className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest">{confLabel}s Necessários</p>
-                            <p className="text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
+                          <div className="flex-1 bg-indigo-50 border border-indigo-100 p-4 sm:p-8 rounded-2xl sm:min-w-[160px] text-center">
+                            <p className="text-[8px] sm:text-[9px] font-black text-indigo-600 uppercase mb-1 sm:mb-2 tracking-widest">Conferentes</p>
+                            <p className="text-2xl sm:text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
                           </div>
                         )}
-                        <div className="bg-slate-50 border border-slate-200 p-8 rounded-2xl min-w-[160px] text-center">
-                          <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Aux. Necessários</p>
-                          <p className="text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 p-4 sm:p-8 rounded-2xl sm:min-w-[160px] text-center">
+                          <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 tracking-widest">Auxiliares</p>
+                          <p className="text-2xl sm:text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
                         </div>
                       </div>
                     </div>
@@ -1370,56 +1357,56 @@ export default function App() {
               <div className="max-w-2xl mx-auto animate-in fade-in duration-500 no-print">
                 <div className="bg-[#1E293B] p-12 md:p-16 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border border-slate-700">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-800 to-transparent" />
-                  <div className="text-center mb-12">
-                    <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-700 shadow-xl">
-                      <Settings2 size={30} className="text-blue-400" />
+                  <div className="text-center mb-8 sm:mb-12">
+                    <div className="w-12 sm:w-16 h-12 sm:h-16 bg-slate-800 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 border border-slate-700 shadow-xl">
+                      <Settings2 size={24} className="text-blue-400 sm:size-[30px]" />
                     </div>
-                    <h2 className="text-2xl font-bold uppercase tracking-tight">Parametrização de Metas</h2>
-                    <p className="text-slate-500 text-xs font-bold mt-3 uppercase tracking-widest">Indicadores de Produtividade Esperada</p>
+                    <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight">Parametrização</h2>
+                    <p className="text-slate-500 text-[9px] sm:text-xs font-bold mt-2 uppercase tracking-widest">Indicadores de Produtividade</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div className="space-y-4 text-center">
-                      <label className="text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-4">Meta Volume</label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+                    <div className="space-y-3 sm:space-y-4 text-center">
+                      <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Meta Vol.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-indigo-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-indigo-500 transition-all shadow-inner" 
                         value={metas.VOLUME || ''} 
                         onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[10px] font-bold text-slate-500 uppercase">PEÇAS / DIA</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / DIA</p>
                     </div>
-                    <div className="space-y-4 text-center">
-                      <label className="text-xs font-bold uppercase text-emerald-400 tracking-widest leading-none block h-4">Jornada Padrão</label>
+                    <div className="space-y-3 sm:space-y-4 text-center">
+                      <label className="text-[9px] sm:text-xs font-bold uppercase text-emerald-400 tracking-widest leading-none block h-3">Jornada</label>
                       <input 
                         type="number" 
                         step="0.5"
-                        className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-emerald-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-emerald-500 transition-all shadow-inner" 
                         value={metas.JORNADA || ''} 
                         onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[10px] font-bold text-slate-500 uppercase">HORAS / DIA</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">H / DIA</p>
                     </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="space-y-4 text-center">
-                        <label className="text-xs font-bold uppercase text-indigo-400 tracking-widest leading-none block h-4">Alvo {confLabel.substring(0, 4)}.</label>
+                      <div className="space-y-3 sm:space-y-4 text-center">
+                        <label className="text-[9px] sm:text-xs font-bold uppercase text-indigo-400 tracking-widest leading-none block h-3">Alvo {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.CONFERENTE || ''} 
                           onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
+                        <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / H</p>
                       </div>
                     )}
-                    <div className="space-y-4 text-center">
-                      <label className="text-xs font-bold uppercase text-red-400 tracking-widest leading-none block h-4">Alvo Auxiliares</label>
+                    <div className="space-y-3 sm:space-y-4 text-center">
+                      <label className="text-[9px] sm:text-xs font-bold uppercase text-red-400 tracking-widest leading-none block h-3">Alvo Aux.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl text-4xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
                         value={metas.AUXILIAR || ''} 
                         onChange={(e) => setMetas({...metas, AUXILIAR: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[10px] font-bold text-slate-500 uppercase">PÇ / HORA</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / H</p>
                     </div>
                   </div>
                 </div>
