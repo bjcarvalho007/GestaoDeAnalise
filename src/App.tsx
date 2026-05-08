@@ -47,6 +47,7 @@ interface DayData {
   conferentes: number;
   auxiliares: number;
   jornada: number;
+  real: number;
 }
 
 interface Metas {
@@ -66,6 +67,7 @@ const generateWeeklyStructure = (): DayData[] => {
     conferentes: 0,
     auxiliares: 0,
     jornada: 9,
+    real: 0,
   }));
 };
 
@@ -228,9 +230,16 @@ export default function App() {
     const isMonthView = dashboardDateFilter === 'mes';
     const isYearView = dashboardDateFilter === 'ano';
 
+    const getHorizonStats = (baseDemand: number, baseReal: number) => ({
+      dia: { demand: baseDemand, real: baseReal },
+      mes: { demand: baseDemand * 22, real: baseReal * 22 },
+      ano: { demand: baseDemand * 264, real: baseReal * 264 }
+    });
+
     if (selectedEnv === 'geral') {
       const envs = Object.keys(allData);
       let totalPecasGeneral = 0;
+      let totalRealGeneral = 0;
       let totalHeadcountGeneral = 0;
       let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
@@ -244,16 +253,19 @@ export default function App() {
           : envData.filter(d => d.id === dashboardDateFilter);
         
         const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
+        const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         const totalMH = targetData.reduce((acc, curr) => {
            const jornada = Number(curr.jornada) || 9;
            const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
            return acc + (jornada * hc);
         }, 0);
 
-        const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
+        const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
         const count = ativos.length || 1;
         
         totalPecasGeneral += totalPecas * factor;
+        const envReal = totalReal * factor;
+        totalRealGeneral += envReal;
         totalManHoursGeneral += totalMH * factor;
         
         const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
@@ -278,8 +290,13 @@ export default function App() {
       const simulatedMH = effectiveHC * effectiveJornada * avgAtivos * factor;
       const productivity = simulatedMH > 0 ? Number((totalPecasGeneral / simulatedMH).toFixed(2)) : 0;
 
+      const baseDemand = totalPecasGeneral / (factor || 1);
+      const baseReal = totalRealGeneral / (factor || 1);
+
       return {
         totalPecas: totalPecasGeneral,
+        realPecas: totalRealGeneral,
+        horizons: getHorizonStats(baseDemand / (envs.length || 1), baseReal / (envs.length || 1)),
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
         manualHC: manualGlobalHC,
         manualJornada: manualGlobalJornada,
@@ -289,8 +306,7 @@ export default function App() {
         isDayView,
         isWeekView,
         isMonthView,
-        isYearView,
-        realPecas: totalPecasGeneral
+        isYearView
       };
     }
 
@@ -299,21 +315,22 @@ export default function App() {
       : data.atual.filter(d => d.id === dashboardDateFilter);
 
     const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
-    const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0);
+    const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
+    const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
     const count = ativos.length || 1;
     
-    // Fatores de projeção (ajustável conforme necessidade)
     const factor = isMonthView ? 4 : isYearView ? 48 : 1;
-    const realPecas = totalPecas;
+    const realPecas = totalReal;
     const displayTotalPecas = totalPecas * factor;
+    const displayRealPecas = totalReal * factor;
     
     const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
-      const p = calculateProdReal(curr.pecas, curr.conferentes, curr.jornada);
+      const p = calculateProdReal(curr.real || curr.pecas, curr.conferentes, curr.jornada);
       return acc + p;
     }, 0) / count);
     
     const mediaRealAux = Math.round(ativos.reduce((acc, curr) => {
-      const p = calculateProdReal(curr.pecas, curr.auxiliares, curr.jornada);
+      const p = calculateProdReal(curr.real || curr.pecas, curr.auxiliares, curr.jornada);
       return acc + p;
     }, 0) / count);
 
@@ -324,9 +341,13 @@ export default function App() {
       ? mediaHeadcountAux 
       : Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
 
+    const baseDemand = displayTotalPecas / (factor || 1);
+    const baseReal = displayRealPecas / (factor || 1);
+
     return { 
       totalPecas: displayTotalPecas,
-      realPecas,
+      realPecas: displayRealPecas,
+      horizons: getHorizonStats(baseDemand / count, baseReal / count),
       diasAtivos: ativos.length * factor, 
       mediaRealConf, 
       mediaRealAux, 
@@ -338,7 +359,7 @@ export default function App() {
       isMonthView,
       isYearView
     };
-  }, [data, dashboardDateFilter, selectedEnv]);
+  }, [allData, dashboardDateFilter, selectedEnv, manualGlobalHC, manualGlobalJornada, data.atual]);
 
   const resetWeek = () => {
     if (confirm('Deseja limpar todos os dados e reiniciar a semana?')) {
@@ -830,7 +851,72 @@ export default function App() {
                       </div>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
+                <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                  <div className="relative z-10">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                       <div>
+                         <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
+                         <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Projeção de Performance Global</p>
+                       </div>
+                       <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Live Dashboard</span>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       {['dia', 'mes', 'ano'].map((period) => {
+                         const h = stats.horizons?.[period as keyof typeof stats.horizons];
+                         if (!h) return null;
+                         const label = period === 'dia' ? 'Diário' : period === 'mes' ? 'Mensal' : 'Anual';
+                         const demand = Math.round(h.demand);
+                         const real = Math.round(h.real);
+                         const isOk = real >= demand;
+                         const diff = real - demand;
+
+                         return (
+                           <div key={period} className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:bg-white/[0.07] transition-all group">
+                             <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{label}</span>
+                                <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                  {isOk ? 'Meta OK' : 'Abaixo'}
+                                </div>
+                             </div>
+                             <div className="space-y-4">
+                               <div>
+                                 <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Demanda Sugerida</p>
+                                 <p className="text-2xl font-black">{demand.toLocaleString()}</p>
+                               </div>
+                               <div className="pt-3 border-t border-white/5">
+                                 <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Realizado / Movim.</p>
+                                 <p className={`text-2xl font-black ${isOk ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                   {real.toLocaleString()}
+                                 </p>
+                               </div>
+                               <div className="flex items-center justify-between pt-2">
+                                  <span className={`text-[10px] font-black uppercase ${isOk ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()}
+                                  </span>
+                                  <div className="h-1 flex-1 mx-3 bg-white/5 rounded-full overflow-hidden">
+                                     <div 
+                                       className={`h-full rounded-full transition-all duration-1000 ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                                       style={{ width: `${Math.min(100, (real / (demand || 1)) * 100)}%` }}
+                                     />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-500">
+                                    {Math.round((real / (demand || 1)) * 100)}%
+                                  </span>
+                               </div>
+                             </div>
+                           </div>
+                         );
+                       })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
                     <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
                       <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
@@ -884,26 +970,30 @@ export default function App() {
                     </div>
                     <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
                       <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                        {stats.isDayView ? 'Fluxo vs Demanda' : stats.isYearView ? 'Vol. Ano Est.' : stats.isMonthView ? 'Vol. Mês Est.' : 'Volume Período'}
+                        {stats.isDayView ? 'Fluxo vs Demanda' : 'Volume Real vs Demanda'}
                       </span>
                       <div className="flex flex-col mt-3">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className={`text-2xl sm:text-4xl font-black leading-none ${(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos ?? 1)) ? 'text-emerald-600' : 'text-amber-600'}`}>
-                            {(stats.totalPecas ?? 0).toLocaleString()}
-                          </span>
-                          <span className="text-[10px] sm:text-xs font-bold text-slate-400">
-                            / {(stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1)).toLocaleString()}
-                          </span>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-black text-slate-400 uppercase">Demanda</span>
+                            <span className="text-xl sm:text-2xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-slate-50 pt-2">
+                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Real Movim.</span>
+                            <span className={`text-xl sm:text-2xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {(stats.realPecas ?? 0).toLocaleString()}
+                            </span>
+                          </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-2">
-                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1))
-                              ? `+${((stats.totalPecas ?? 0) - ((metas.VOLUME ?? 0) * (stats.diasAtivos || 1))).toLocaleString()} Superávit` 
-                              : `-${(((metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
+                        <div className="flex items-center justify-between mt-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0)
+                              ? `+${((stats.realPecas ?? 0) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'Excesso' : 'Extra'}` 
+                              : `-${((stats.totalPecas ?? 0) - (stats.realPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
                           </p>
                           <span className="text-[10px] font-bold text-slate-400">
-                            {Math.round(((stats.totalPecas ?? 0) / (((metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) || 1)) * 100)}%
+                            {Math.round(((stats.realPecas ?? 0) / ((stats.totalPecas ?? 1) || 1)) * 100)}%
                           </span>
                         </div>
                       </div>
@@ -1108,13 +1198,14 @@ export default function App() {
                     const hasData = localPecas > 0;
                     
                     const volumeOk = localPecas >= (metas.VOLUME || 6000);
+                    const realOk = (Number(item.real) || 0) >= localPecas;
                     const prodCOk = prodC >= (metas.CONFERENTE || 220);
                     const prodAOk = prodA >= (metas.AUXILIAR || 110);
                     const staffingCOk = (Number(item.conferentes) || 0) >= sugC;
                     const staffingAOk = selectedEnv === 'separacao' ? true : (Number(item.auxiliares) || 0) >= sugA;
                     const diffC = (Number(item.conferentes) || 0) - sugC;
                     const diffA = (Number(item.auxiliares) || 0) - sugA;
-                    const allOk = volumeOk && prodCOk && (selectedEnv === 'separacao' ? true : prodAOk);
+                    const allOk = volumeOk && realOk && prodCOk && (selectedEnv === 'separacao' ? true : prodAOk);
 
                     return (
                       <div id={`card-${item.id}`} key={item.id} className={`bg-white rounded-3xl border overflow-hidden shadow-sm transition-all duration-300 print:shadow-none print:border-slate-200 ${
@@ -1130,13 +1221,13 @@ export default function App() {
                                 <div className="flex items-center gap-1.5">
                                   <div className={`w-1.5 h-1.5 rounded-full ${volumeOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                   <span className={`text-[10px] font-bold uppercase tracking-wider ${volumeOk ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    Volume: {localPecas.toLocaleString()} PÇS {volumeOk ? '(OK)' : `(FALTA ${Math.max(0, (metas.VOLUME || 6000) - localPecas).toLocaleString()})`}
+                                    Demanda: {volumeOk ? 'Comprometida' : 'Abaixo do Alvo'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    Produtividade: {prodCOk && (selectedEnv === 'separacao' ? true : prodAOk) ? 'Meta Atingida' : 'Abaixo da Meta'}
+                                  <div className={`w-1.5 h-1.5 rounded-full ${realOk ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${realOk ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                    Fluxo: {(Number(item.real) || 0).toLocaleString()} PÇS {realOk ? '(OK)' : (selectedEnv === 'recebimento' ? '(NO-SHOW)' : '(PENDENTE)')}
                                   </span>
                                 </div>
                               </div>
@@ -1185,7 +1276,19 @@ export default function App() {
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Equipa (H)</label>
+                              <label className="text-xs font-bold text-indigo-400 uppercase tracking-widest ml-1">Real Movim.</label>
+                              <input 
+                                type="number" 
+                                className="w-full p-4 bg-indigo-50/30 border border-indigo-100 rounded-xl font-black text-center text-indigo-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                value={item.real || ''} 
+                                onChange={(e) => updateDataField(item.id, 'real', e.target.value)} 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 text-[10px]">Equipa (H)</label>
                               <input 
                                 type="number" 
                                 step="0.5"
@@ -1193,6 +1296,12 @@ export default function App() {
                                 value={item.jornada || ''} 
                                 onChange={(e) => updateDataField(item.id, 'jornada', e.target.value)} 
                               />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 text-[10px]">Prod. Real</label>
+                               <div className="flex-1 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center font-black text-slate-400 text-lg">
+                                 {calculateProdReal(item.real || item.pecas, (Number(item.conferentes) || 0) + (Number(item.auxiliares) || 0), item.jornada || 9)}
+                               </div>
                             </div>
                           </div>
 
