@@ -349,15 +349,11 @@ export default function App() {
     const displayTotalPecas = totalPecas;
     const displayRealPecas = totalReal;
     
-    const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
-      const p = calculateProdReal(curr.real || curr.pecas, curr.conferentes, curr.jornada);
-      return acc + p;
-    }, 0) / count);
+    const totalMHConf = targetData.reduce((acc, curr) => acc + ((Number(curr.conferentes) || 0) * (Number(curr.jornada) || 9)), 0);
+    const totalMHAux = targetData.reduce((acc, curr) => acc + ((Number(curr.auxiliares) || 0) * (Number(curr.jornada) || 9)), 0);
     
-    const mediaRealAux = Math.round(ativos.reduce((acc, curr) => {
-      const p = calculateProdReal(curr.real || curr.pecas, curr.auxiliares, curr.jornada);
-      return acc + p;
-    }, 0) / count);
+    const mediaRealConf = totalMHConf > 0 ? Math.round(totalReal / totalMHConf) : 0;
+    const mediaRealAux = totalMHAux > 0 ? Math.round(totalReal / totalMHAux) : 0;
 
     const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
     const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
@@ -1203,43 +1199,69 @@ export default function App() {
             {/* --- GESTÃO OPERACIONAL --- */}
             {activeTab === 'input' && (
               <>
-                <div className="flex items-center gap-3 no-print mb-6 bg-slate-100 p-2 rounded-2xl w-fit">
-                <select 
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                >
-                  {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
-                    <option key={m} value={i}>{m}</option>
-                  ))}
-                </select>
-                <select 
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                >
-                  {[2024, 2025, 2026, 2027].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4 no-print mb-8">
+                  <div className="flex items-center gap-3 bg-slate-100 p-2 rounded-2xl w-fit">
+                    <select 
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    >
+                      {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
+                        <option key={m} value={i}>{m}</option>
+                      ))}
+                    </select>
+                    <select 
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    >
+                      {[2024, 2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-5 duration-300 print:space-y-6 print:animate-none">
-                <div className="hidden md:flex items-center gap-6 no-print">
-                  <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
-                    <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={24}/></div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Volume Semanal</p>
-                      <p className="text-2xl font-black text-slate-800">{stats.totalPecas.toLocaleString()}</p>
-                    </div>
+                  <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
+                    <button 
+                      onClick={() => setDashboardDateFilter('semana')}
+                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                      Semana
+                    </button>
+                    <button 
+                      onClick={() => setDashboardDateFilter('mes')}
+                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                      Mês
+                    </button>
+                    <button 
+                      onClick={() => setDashboardDateFilter('ano')}
+                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                      Ano
+                    </button>
                   </div>
-                  <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm border-l-4 border-l-red-800">
-                    <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center text-red-800"><Activity size={24}/></div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Prod. Média (H)</p>
-                      <p className="text-2xl font-black text-slate-800">{stats.mediaRealConf} <span className="text-sm text-slate-400">PÇ/H</span></p>
+                </div>
+
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-5 duration-300 print:space-y-6 print:animate-none">
+                  <div className="hidden md:flex items-center gap-6 no-print">
+                    <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
+                      <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={24}/></div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Volume Periodo</p>
+                        <p className="text-2xl font-black text-slate-800">{stats.realPecas.toLocaleString()}</p>
+                      </div>
                     </div>
-                  </div>
+                    <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm border-l-4 border-l-red-800">
+                      <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center text-red-800"><Activity size={24}/></div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Prod. Média (H)</p>
+                        <p className="text-2xl font-black text-slate-800">
+                          {selectedEnv === 'separacao' ? stats.mediaRealAux : stats.mediaRealConf} 
+                          <span className="text-sm text-slate-400 ml-2 uppercase">PÇ/H</span>
+                        </p>
+                      </div>
+                    </div>
                   <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
                     <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><CalendarCheck size={24}/></div>
                     <div>
