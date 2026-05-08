@@ -237,16 +237,22 @@ export default function App() {
     });
 
     if (selectedEnv === 'geral') {
-      const envs = Object.keys(allData);
+      const operationalEnvs = ['recebimento', 'conferencia', 'separacao', 'expedicao'];
       let totalPecasGeneral = 0;
       let totalRealGeneral = 0;
       let totalHeadcountGeneral = 0;
       let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
       let globalMonthlyReal = 0;
+      let aggregateVolumeMeta = 0;
       
-      const envStats = envs.map(env => {
-        const envData = allData[env].atual;
+      const envStats = operationalEnvs.map(env => {
+        const envObj = allData[env as keyof typeof allData];
+        if (!envObj) return null;
+        
+        const envData = envObj.atual;
+        const envMetas = envObj.metas;
+        
         const targetData = (isWeekView || isMonthView || isYearView)
           ? envData 
           : envData.filter(d => d.id === dashboardDateFilter);
@@ -255,6 +261,7 @@ export default function App() {
         const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         const totalRealMonth = envData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         globalMonthlyReal += totalRealMonth;
+        aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
 
         const totalMH = targetData.reduce((acc, curr) => {
            const jornada = Number(curr.jornada) || 9;
@@ -282,13 +289,13 @@ export default function App() {
           totalReal: totalReal,
           hcTotal,
           ativos: ativos.length,
-          meta: env === 'separacao' ? metas.AUXILIAR : metas.CONFERENTE
+          meta: env === 'separacao' ? (envMetas.AUXILIAR || 110) : (envMetas.CONFERENTE || 220)
         };
-      });
+      }).filter(Boolean) as any[];
 
       const effectiveHC = manualGlobalHC !== null ? manualGlobalHC : totalHeadcountGeneral;
       const effectiveJornada = manualGlobalJornada;
-      const avgAtivos = ativosCountGeneral / (envs.length || 1);
+      const avgAtivos = ativosCountGeneral / (operationalEnvs.length || 1);
       
       const simulatedMH = effectiveHC * effectiveJornada * avgAtivos;
       const productivity = simulatedMH > 0 ? Number((totalRealGeneral / simulatedMH).toFixed(2)) : 0;
@@ -299,6 +306,7 @@ export default function App() {
       return {
         totalPecas: totalPecasGeneral,
         realPecas: totalRealGeneral,
+        aggregateVolumeMeta,
         horizons: getHorizonStats(baseDemand, baseReal),
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
         manualHC: manualGlobalHC,
@@ -676,12 +684,12 @@ export default function App() {
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Fluxo Consolidado</p>
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-baseline gap-2.5">
-                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
-                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Realizado</span>
+                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
+                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Programado</span>
                             </div>
                             <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit">
                               <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-tight">
-                                Programado: <span className="text-blue-900 ml-1">{stats.totalPecas?.toLocaleString()}</span>
+                                Realizado: <span className="text-blue-900 ml-1">{stats.realPecas?.toLocaleString()}</span>
                               </p>
                             </div>
                           </div>
@@ -734,22 +742,14 @@ export default function App() {
                             
                             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
                                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
-                                 <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Capacidade Dia</p>
+                                 <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Capacidade Meta (Sum)</p>
                                  <p className="text-lg font-black text-blue-900">
-                                   {Math.round(
-                                     (stats.envStats || []).reduce((acc, env) => {
-                                       const totalHistHC = (stats.envStats || []).reduce((sum, e) => sum + e.hcTotal, 0) || 1;
-                                       const totalHC = manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal;
-                                       const proportion = env.hcTotal / totalHistHC;
-                                       const envHC = totalHC * proportion;
-                                       return acc + (envHC * manualGlobalJornada * (env.meta || 65));
-                                     }, 0)
-                                   ).toLocaleString()}
+                                   {(stats.aggregateVolumeMeta || 0).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
                                <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/50">
-                                 <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Capacidade Mês</p>
+                                 <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Real Mês</p>
                                  <p className="text-lg font-black text-red-900">
                                    {(stats.monthlyReal || 0).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
