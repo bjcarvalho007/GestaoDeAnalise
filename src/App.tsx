@@ -241,11 +241,12 @@ export default function App() {
       let totalPecasGeneral = 0;
       let totalRealGeneral = 0;
       let totalHeadcountGeneral = 0;
-      let ativosCountGeneral = 0;
+      let totalActivesInPeriod = 0;
       let globalMonthlyReal = 0;
-      let globalMonthlyMH = 0;
       let totalDaysActiveMonth = 0;
       let aggregateVolumeMeta = 0;
+      let periodActualMH = 0;
+      let periodDaysActiveCount = 0;
       
       const envStats = operationalEnvs.map(env => {
         const envObj = allData[env as keyof typeof allData];
@@ -261,34 +262,37 @@ export default function App() {
         const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
         const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         
-        // Monthly stats for this environment
+        // Monthly accumulators
         const totalRealMonth = envData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         globalMonthlyReal += totalRealMonth;
-        
-        const mhMonth = envData.reduce((acc, curr) => {
-             const jornada = Number(curr.jornada) || 9;
-             const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
-             return acc + (jornada * hc);
-        }, 0);
-        globalMonthlyMH += mhMonth;
-
         const activeDaysMonth = envData.filter(d => (Number(d.pecas) || 0) > 0 || (Number(d.real) || 0) > 0);
         totalDaysActiveMonth += activeDaysMonth.length;
         
-        aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
+        // Current period actual MH
+        const envPeriodMH = targetData.reduce((acc, curr) => {
+             const j = Number(curr.jornada) || 9;
+             const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
+             return acc + (j * hc);
+        }, 0);
+        periodActualMH += envPeriodMH;
 
         const ativosTarget = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
-        const count = ativosTarget.length || 1;
+        const countDays = ativosTarget.length || 1;
+        periodDaysActiveCount += ativosTarget.length;
         
         totalPecasGeneral += totalPecas;
         totalRealGeneral += totalReal;
         
-        const mediaHeadcountConf = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
-        const mediaHeadcountAux = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
+        const mediaHeadcountConf = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / countDays).toFixed(1));
+        const mediaHeadcountAux = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / countDays).toFixed(1));
         
         const hcTotal = env === 'separacao' ? mediaHeadcountAux : (mediaHeadcountConf + mediaHeadcountAux);
         totalHeadcountGeneral += hcTotal;
-        ativosCountGeneral += ativosTarget.length;
+        totalActivesInPeriod += ativosTarget.length;
+        
+        if (['recebimento', 'separacao'].includes(env)) {
+          aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
+        }
 
         return {
           env,
@@ -302,14 +306,13 @@ export default function App() {
 
       const effectiveHC = manualGlobalHC !== null ? manualGlobalHC : totalHeadcountGeneral;
       const effectiveJornada = manualGlobalJornada;
-      const avgDaysActive = totalDaysActiveMonth / (operationalEnvs.length || 1);
+      const avgDaysInPeriod = periodDaysActiveCount / (envStats.length || 1);
       
-      // Calculate productivity based on Monthly Totals
-      const effectiveMonthlyMH = (manualGlobalHC !== null || manualGlobalJornada !== 9)
-        ? (effectiveHC * effectiveJornada * avgDaysActive)
-        : globalMonthlyMH;
+      const effectiveMH = (manualGlobalHC !== null || manualGlobalJornada !== 9)
+        ? (effectiveHC * effectiveJornada * Math.max(1, avgDaysInPeriod))
+        : periodActualMH;
 
-      const productivity = effectiveMonthlyMH > 0 ? Number((globalMonthlyReal / effectiveMonthlyMH).toFixed(2)) : 0;
+      const productivity = effectiveMH > 0 ? Number((totalRealGeneral / effectiveMH).toFixed(2)) : 0;
 
       const baseDemand = totalPecasGeneral / (isDayView ? 1 : 6);
       const baseReal = totalRealGeneral / (isDayView ? 1 : 6);
@@ -322,7 +325,7 @@ export default function App() {
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
         manualHC: manualGlobalHC,
         manualJornada: manualGlobalJornada,
-        diasAtivos: ativosCountGeneral,
+        diasAtivos: totalActivesInPeriod,
         productivity,
         envStats,
         monthlyReal: globalMonthlyReal,
@@ -716,7 +719,7 @@ export default function App() {
 
                       <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500 print:shadow-none print:break-inside-avoid print:border-slate-300">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global (Mensal)</p>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global</p>
                           <div className="flex items-baseline gap-2.5">
                             <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
