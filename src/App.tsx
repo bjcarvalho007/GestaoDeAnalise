@@ -241,9 +241,10 @@ export default function App() {
       let totalPecasGeneral = 0;
       let totalRealGeneral = 0;
       let totalHeadcountGeneral = 0;
-      let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
       let globalMonthlyReal = 0;
+      let globalMonthlyMH = 0;
+      let totalDaysActiveMonth = 0;
       let aggregateVolumeMeta = 0;
       
       const envStats = operationalEnvs.map(env => {
@@ -259,46 +260,56 @@ export default function App() {
         
         const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
         const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
+        
+        // Monthly stats for this environment
         const totalRealMonth = envData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
         globalMonthlyReal += totalRealMonth;
+        
+        const mhMonth = envData.reduce((acc, curr) => {
+             const jornada = Number(curr.jornada) || 9;
+             const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
+             return acc + (jornada * hc);
+        }, 0);
+        globalMonthlyMH += mhMonth;
+
+        const activeDaysMonth = envData.filter(d => (Number(d.pecas) || 0) > 0 || (Number(d.real) || 0) > 0);
+        totalDaysActiveMonth += activeDaysMonth.length;
+        
         aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
 
-        const totalMH = targetData.reduce((acc, curr) => {
-           const jornada = Number(curr.jornada) || 9;
-           const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
-           return acc + (jornada * hc);
-        }, 0);
-
-        const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
-        const count = ativos.length || 1;
+        const ativosTarget = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
+        const count = ativosTarget.length || 1;
         
         totalPecasGeneral += totalPecas;
         totalRealGeneral += totalReal;
-        totalManHoursGeneral += totalMH;
         
-        const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
-        const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
+        const mediaHeadcountConf = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
+        const mediaHeadcountAux = Number((ativosTarget.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
         
         const hcTotal = env === 'separacao' ? mediaHeadcountAux : (mediaHeadcountConf + mediaHeadcountAux);
         totalHeadcountGeneral += hcTotal;
-        ativosCountGeneral += ativos.length;
+        ativosCountGeneral += ativosTarget.length;
 
         return {
           env,
           totalPecas: totalPecas,
           totalReal: totalReal,
           hcTotal,
-          ativos: ativos.length,
+          ativos: ativosTarget.length,
           meta: env === 'separacao' ? (envMetas.AUXILIAR || 110) : (envMetas.CONFERENTE || 220)
         };
       }).filter(Boolean) as any[];
 
       const effectiveHC = manualGlobalHC !== null ? manualGlobalHC : totalHeadcountGeneral;
       const effectiveJornada = manualGlobalJornada;
-      const avgAtivos = ativosCountGeneral / (operationalEnvs.length || 1);
+      const avgDaysActive = totalDaysActiveMonth / (operationalEnvs.length || 1);
       
-      const simulatedMH = effectiveHC * effectiveJornada * avgAtivos;
-      const productivity = simulatedMH > 0 ? Number((totalRealGeneral / simulatedMH).toFixed(2)) : 0;
+      // Calculate productivity based on Monthly Totals
+      const effectiveMonthlyMH = (manualGlobalHC !== null || manualGlobalJornada !== 9)
+        ? (effectiveHC * effectiveJornada * avgDaysActive)
+        : globalMonthlyMH;
+
+      const productivity = effectiveMonthlyMH > 0 ? Number((globalMonthlyReal / effectiveMonthlyMH).toFixed(2)) : 0;
 
       const baseDemand = totalPecasGeneral / (isDayView ? 1 : 6);
       const baseReal = totalRealGeneral / (isDayView ? 1 : 6);
@@ -684,12 +695,12 @@ export default function App() {
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Fluxo Consolidado</p>
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-baseline gap-2.5">
-                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
-                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Programado</span>
+                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
+                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Realizado</span>
                             </div>
                             <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit">
                               <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-tight">
-                                Realizado: <span className="text-blue-900 ml-1">{stats.realPecas?.toLocaleString()}</span>
+                                Programado: <span className="text-blue-900 ml-1">{stats.totalPecas?.toLocaleString()}</span>
                               </p>
                             </div>
                           </div>
@@ -705,7 +716,7 @@ export default function App() {
 
                       <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500 print:shadow-none print:break-inside-avoid print:border-slate-300">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global</p>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global (Mensal)</p>
                           <div className="flex items-baseline gap-2.5">
                             <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
