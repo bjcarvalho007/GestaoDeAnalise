@@ -567,16 +567,16 @@ export default function App() {
         <main className="flex-1 min-w-0 overflow-y-auto max-h-screen bg-[#F1F5F9] print:bg-white print:max-h-none print:overflow-visible">
           <div className="p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none">
             {/* Context Header */}
-            <div className="mb-6 sm:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print border-b border-slate-200 pb-6 sm:pb-8">
+            <div className="mb-4 sm:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print border-b border-slate-200 pb-4 sm:pb-6">
               <div className="w-full">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="h-1.5 w-10 sm:w-14 bg-blue-900 rounded-full" />
-                    <span className="text-xs sm:text-base font-black text-slate-400 uppercase tracking-[0.3em]">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-4">
+                    <div className="h-1.5 w-8 sm:w-12 bg-blue-900 rounded-full" />
+                    <span className="text-[10px] sm:text-sm font-black text-slate-400 uppercase tracking-[0.3em]">
                       {selectedEnv === 'geral' ? 'Visão Consolidada' : `Ambiente ${selectedEnv}`}
                     </span>
                   </div>
-                  <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
-                    {selectedEnv === 'geral' ? 'Control Tower Dashboard' : (
+                  <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
+                    {selectedEnv === 'geral' ? 'Dashboard geral das operações' : (
                       activeTab === 'dashboard' ? 'Performance' : 
                       activeTab === 'input' ? 'Operações' : 
                       activeTab === 'meta' ? 'Parametrização' : 'Simular'
@@ -664,22 +664,22 @@ export default function App() {
                   /* GESTÃO GERAL VIEW */
                   <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
                         <div>
-                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Fluxo Consolidado</p>
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-baseline gap-4">
-                              <span className="text-6xl sm:text-8xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
-                              <span className="text-sm sm:text-lg font-bold text-slate-500 uppercase">Total Programado</span>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Fluxo Consolidado</p>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-baseline gap-2.5">
+                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
+                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Realizado</span>
                             </div>
-                            <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 w-fit">
-                              <p className="text-sm sm:text-lg font-black text-slate-500 uppercase tracking-tight">
-                                Total Realizado: <span className="text-blue-900 ml-1">{stats.realPecas?.toLocaleString()}</span>
+                            <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit">
+                              <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-tight">
+                                Programado: <span className="text-blue-900 ml-1">{stats.totalPecas?.toLocaleString()}</span>
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div className="mt-10 sm:mt-16 flex items-center justify-between pt-8 sm:pt-10 border-t border-slate-100">
+                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-blue-500" />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
@@ -688,41 +688,41 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
                         <div>
-                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Produtividade Global</p>
-                          <div className="flex items-baseline gap-4">
-                            <span className={`text-6xl sm:text-8xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global</p>
+                          <div className="flex items-baseline gap-2.5">
+                            <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
                             </span>
-                            <span className="text-sm sm:text-lg font-bold text-slate-500 uppercase">PÇ / H</span>
+                            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">PÇ / H</span>
                           </div>
                         </div>
-                        <div className="mt-10 sm:mt-16 flex items-center justify-between pt-8 sm:pt-10 border-t border-slate-100">
-                          <div className="flex items-center gap-3">
-                             <div className={`w-4 h-4 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
-                             <span className="text-sm sm:text-base font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
+                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
+                          <div className="flex items-center gap-1.5">
+                             <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
+                             <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          {stats.productivity >= 65 ? <CheckCircle2 size={40} className="text-blue-600" /> : <AlertTriangle size={40} className="text-red-700" />}
+                          {stats.productivity >= 65 ? <CheckCircle2 size={24} className="text-blue-600" /> : <AlertTriangle size={24} className="text-red-700" />}
                         </div>
                       </div>
 
-                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
                         <div>
-                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Efetivo Consolidado</p>
-                          <div className="flex flex-col gap-6 sm:gap-10">
-                            <div className="flex items-center gap-4 sm:gap-8">
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Efetivo Consolidado</p>
+                          <div className="flex flex-col gap-3.5 sm:gap-6">
+                            <div className="flex items-center gap-3 sm:gap-5">
                               <div className="flex flex-col">
-                                <span className="text-sm font-black text-slate-400 uppercase mb-3 tracking-tighter">Equipe (Editar)</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-tighter">Equipe</span>
                                 <input 
                                   type="number"
                                   value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
                                   onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
-                                  className="w-28 sm:w-44 text-5xl sm:text-6xl font-black text-blue-900 bg-slate-50 rounded-2xl px-5 py-3 border border-slate-100 focus:ring-4 focus:ring-blue-500/20 outline-none shadow-inner transition-all"
+                                  className="w-20 sm:w-28 text-3xl sm:text-4xl font-black text-blue-900 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none shadow-inner transition-all"
                                   placeholder="0"
                                 />
                               </div>
-                              <span className="text-base sm:text-lg font-bold text-slate-400 uppercase self-end mb-4">Colab. Total</span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-400 uppercase self-end mb-2">Colab. Total</span>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
@@ -852,42 +852,42 @@ export default function App() {
                 ) : (
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 no-print">
-                      <div className="bg-blue-50/50 p-6 sm:p-8 rounded-2xl border border-blue-100/50">
-                          <p className="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-widest mb-2">Diário</p>
-                          <div className="flex flex-col gap-2">
-                            <p className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">
+                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
+                          <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1.5">Diário</p>
+                          <div className="flex flex-col gap-1.5">
+                            <p className="text-xl sm:text-2xl font-black text-blue-900 leading-none">
                               {stats.isDayView 
                                 ? (stats.realPecas ?? 0).toLocaleString()
                                 : Math.round(stats.realPecas / 6).toLocaleString()
                               }
                             </p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
-                              Programado: <span className="text-blue-600">{stats.isDayView 
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
+                              Programado: <span className="text-blue-600 font-black">{stats.isDayView 
                                 ? (stats.totalPecas ?? 0).toLocaleString()
                                 : Math.round(stats.totalPecas / 6).toLocaleString()
                               }</span>
                             </p>
                           </div>
                       </div>
-                      <div className="bg-red-50/50 p-6 sm:p-8 rounded-2xl border border-red-100/50">
-                          <p className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-widest mb-2">Semanal</p>
-                          <div className="flex flex-col gap-2">
-                            <p className="text-2xl sm:text-3xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-red-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                      <div className="bg-red-50/50 p-4 sm:p-5 rounded-2xl border border-red-100/50">
+                          <p className="text-[10px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-1.5">Semanal</p>
+                          <div className="flex flex-col gap-1.5">
+                            <p className="text-xl sm:text-2xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-red-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
-                      <div className="bg-blue-50/50 p-6 sm:p-8 rounded-2xl border border-blue-100/50">
-                          <p className="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-widest mb-2">Mensal</p>
-                          <div className="flex flex-col gap-2">
-                            <p className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-blue-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
+                          <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1.5">Mensal</p>
+                          <div className="flex flex-col gap-1.5">
+                            <p className="text-xl sm:text-2xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-blue-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
-                      <div className="bg-slate-50/50 p-6 sm:p-8 rounded-2xl border border-slate-100/50">
-                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Anual</p>
-                          <div className="flex flex-col gap-2">
-                            <p className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-slate-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                      <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Anual</p>
+                          <div className="flex flex-col gap-1.5">
+                            <p className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-slate-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
                   </div>
@@ -895,10 +895,10 @@ export default function App() {
                 <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
                   <div className="relative z-10">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-12">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
                        <div>
-                         <h3 className="text-2xl sm:text-4xl font-black tracking-tight mb-2">Cenário Consolidado</h3>
-                         <p className="text-slate-400 text-sm sm:text-base font-bold uppercase tracking-widest">Projeção de Performance Global</p>
+                         <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
+                         <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest">Projeção de Performance Global</p>
                        </div>
                        <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -958,66 +958,66 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
-                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                       </span>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-6 sm:mt-12 gap-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-4 sm:mt-8 gap-2">
                         <div>
-                          <span className="text-6xl sm:text-7xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
-                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">
+                          <span className="text-5xl sm:text-6xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase mt-3">
                             {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
                         </div>
-                            <div className="text-right sm:block hidden bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                            <div className="text-right sm:block hidden bg-slate-50 p-4 rounded-2xl border border-slate-100">
                               {selectedEnv === 'separacao' && (
-                                <div className="mb-3">
-                                  <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
-                                  <p className="text-3xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-xs text-slate-400">PÇ/H</span></p>
+                                <div className="mb-2">
+                                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
+                                  <p className="text-2xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
                                 </div>
                               )}
                               {selectedEnv !== 'separacao' && (
-                                <p className="text-base font-bold text-slate-500 uppercase tracking-tighter mb-1">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                                <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter mb-1">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
                               )}
-                              <p className="text-base font-bold text-slate-500 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                              <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
                             </div>
                       </div>
                     </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                        <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
-                        <div className="flex items-end justify-between mt-6 sm:mt-12">
+                      <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
+                        <div className="flex items-end justify-between mt-4 sm:mt-8">
                           <div>
-                            <span className="text-4xl sm:text-7xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
-                            <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">Ref: {metas.CONFERENTE}</p>
+                            <span className="text-3xl sm:text-6xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
+                            <p className="text-xs sm:text-sm font-black text-slate-400 uppercase mt-3">Ref: {metas.CONFERENTE}</p>
                           </div>
-                          <span className={`text-base sm:text-xl font-bold flex items-center mb-3 px-4 py-1.5 rounded-xl ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
+                          <span className={`text-sm sm:text-base font-bold flex items-center mb-2 px-3 py-1 rounded-xl ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
                             {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
                           </span>
                         </div>
                       </div>
                     )}
-                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
-                      <div className="flex items-end justify-between mt-6 sm:mt-12">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
+                      <div className="flex items-end justify-between mt-4 sm:mt-8">
                         <div>
-                          <span className="text-4xl sm:text-7xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
-                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">Ref: {metas.AUXILIAR}</p>
+                          <span className="text-3xl sm:text-6xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase mt-3">Ref: {metas.AUXILIAR}</p>
                         </div>
-                        <span className={`text-base sm:text-xl font-bold flex items-center mb-3 px-4 py-1.5 rounded-xl ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
+                        <span className={`text-sm sm:text-base font-bold flex items-center mb-2 px-3 py-1 rounded-xl ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
                           {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
                         </span>
                       </div>
                     </div>
-                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Fluxo vs Programado' : 'Real Movim. vs Programado'}
                       </span>
-                      <div className="flex flex-col mt-6 sm:mt-10">
-                        <div className="flex flex-col gap-4">
+                      <div className="flex flex-col mt-4 sm:mt-8">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest">Programado</span>
-                            <span className="text-3xl sm:text-5xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Programado</span>
+                            <span className="text-2xl sm:text-4xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
                           </div>
                           <div className="flex items-center justify-between border-t border-slate-100 pt-5">
                             <span className="text-sm sm:text-base font-black text-blue-500 uppercase tracking-widest">Real Movim.</span>
@@ -1586,47 +1586,47 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
                       <div className="space-y-4 sm:space-y-6 text-center">
-                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Meta Vol.</label>
+                        <label className="text-[10px] sm:text-xs font-black uppercase text-blue-400 tracking-widest leading-none block h-3">Meta Vol.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.VOLUME || ''} 
                           onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / DIA</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / DIA</p>
                       </div>
-                      <div className="space-y-4 sm:space-y-6 text-center">
-                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Jornada</label>
+                      <div className="space-y-2 sm:space-y-3 text-center">
+                        <label className="text-[10px] sm:text-xs font-black uppercase text-blue-400 tracking-widest leading-none block h-3">Jornada</label>
                         <input 
                           type="number" 
                           step="0.5"
-                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.JORNADA || ''} 
                           onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">H / DIA</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">H / DIA</p>
                       </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="space-y-4 sm:space-y-6 text-center">
-                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Meta {confLabel.substring(0, 4)}.</label>
+                      <div className="space-y-2 sm:space-y-3 text-center">
+                        <label className="text-[10px] sm:text-xs font-black uppercase text-blue-400 tracking-widest leading-none block h-3">Meta {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.CONFERENTE || ''} 
                           onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / H</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / H</p>
                       </div>
                     )}
-                    <div className="space-y-4 sm:space-y-6 text-center">
-                      <label className="text-xs sm:text-sm font-black uppercase text-red-400 tracking-widest leading-none block h-4">Meta Aux.</label>
+                    <div className="space-y-2 sm:space-y-3 text-center">
+                      <label className="text-[10px] sm:text-xs font-black uppercase text-red-400 tracking-widest leading-none block h-3">Meta Aux.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
                         value={metas.AUXILIAR || ''} 
                         onChange={(e) => setMetas({...metas, AUXILIAR: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / H</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / H</p>
                     </div>
                   </div>
                 </div>
