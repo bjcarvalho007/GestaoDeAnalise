@@ -232,8 +232,8 @@ export default function App() {
 
     const getHorizonStats = (baseDemand: number, baseReal: number) => ({
       dia: { demand: baseDemand, real: baseReal },
-      mes: { demand: baseDemand * 22, real: baseReal * 22 },
-      ano: { demand: baseDemand * 264, real: baseReal * 264 }
+      mes: { demand: baseDemand, real: baseReal },
+      ano: { demand: baseDemand, real: baseReal }
     });
 
     if (selectedEnv === 'geral') {
@@ -243,8 +243,6 @@ export default function App() {
       let totalHeadcountGeneral = 0;
       let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
-      
-      const factor = isMonthView ? 4 : isYearView ? 48 : 1;
       
       const envStats = envs.map(env => {
         const envData = allData[env].atual;
@@ -263,10 +261,9 @@ export default function App() {
         const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
         const count = ativos.length || 1;
         
-        totalPecasGeneral += totalPecas * factor;
-        const envReal = totalReal * factor;
-        totalRealGeneral += envReal;
-        totalManHoursGeneral += totalMH * factor;
+        totalPecasGeneral += totalPecas;
+        totalRealGeneral += totalReal;
+        totalManHoursGeneral += totalMH;
         
         const mediaHeadcountConf = Number((ativos.reduce((acc, curr) => acc + (Number(curr.conferentes) || 0), 0) / count).toFixed(1));
         const mediaHeadcountAux = Number((ativos.reduce((acc, curr) => acc + (Number(curr.auxiliares) || 0), 0) / count).toFixed(1));
@@ -277,7 +274,7 @@ export default function App() {
 
         return {
           env,
-          totalPecas: totalPecas * factor,
+          totalPecas: totalPecas,
           hcTotal,
           ativos: ativos.length
         };
@@ -287,16 +284,16 @@ export default function App() {
       const effectiveJornada = manualGlobalJornada;
       const avgAtivos = ativosCountGeneral / (envs.length || 1);
       
-      const simulatedMH = effectiveHC * effectiveJornada * avgAtivos * factor;
+      const simulatedMH = effectiveHC * effectiveJornada * avgAtivos;
       const productivity = simulatedMH > 0 ? Number((totalPecasGeneral / simulatedMH).toFixed(2)) : 0;
 
-      const baseDemand = totalPecasGeneral / (factor || 1);
-      const baseReal = totalRealGeneral / (factor || 1);
+      const baseDemand = totalPecasGeneral / (isDayView ? 1 : 6);
+      const baseReal = totalRealGeneral / (isDayView ? 1 : 6);
 
       return {
         totalPecas: totalPecasGeneral,
         realPecas: totalRealGeneral,
-        horizons: getHorizonStats(baseDemand / (envs.length || 1), baseReal / (envs.length || 1)),
+        horizons: getHorizonStats(baseDemand, baseReal),
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
         manualHC: manualGlobalHC,
         manualJornada: manualGlobalJornada,
@@ -319,10 +316,9 @@ export default function App() {
     const ativos = targetData.filter(i => (Number(i.pecas) || 0) > 0 || (Number(i.real) || 0) > 0);
     const count = ativos.length || 1;
     
-    const factor = isMonthView ? 4 : isYearView ? 48 : 1;
     const realPecas = totalReal;
-    const displayTotalPecas = totalPecas * factor;
-    const displayRealPecas = totalReal * factor;
+    const displayTotalPecas = totalPecas;
+    const displayRealPecas = totalReal;
     
     const mediaRealConf = Math.round(ativos.reduce((acc, curr) => {
       const p = calculateProdReal(curr.real || curr.pecas, curr.conferentes, curr.jornada);
@@ -341,14 +337,14 @@ export default function App() {
       ? mediaHeadcountAux 
       : Number((mediaHeadcountConf + mediaHeadcountAux).toFixed(1));
 
-    const baseDemand = displayTotalPecas / (factor || 1);
-    const baseReal = displayRealPecas / (factor || 1);
+    const baseDemand = displayTotalPecas / (isDayView ? 1 : count);
+    const baseReal = displayRealPecas / (isDayView ? 1 : count);
 
     return { 
       totalPecas: displayTotalPecas,
       realPecas: displayRealPecas,
-      horizons: getHorizonStats(baseDemand / count, baseReal / count),
-      diasAtivos: ativos.length * factor, 
+      horizons: getHorizonStats(baseDemand, baseReal),
+      diasAtivos: ativos.length, 
       mediaRealConf, 
       mediaRealAux, 
       mediaHeadcountConf, 
@@ -397,9 +393,9 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-h-[60vh] md:max-h-none overflow-y-auto md:overflow-visible p-2">
                 {[
-                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-indigo-600', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
-                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-emerald-600', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
-                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-indigo-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
+                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
+                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
+                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
                 ].map(env => (
                   <button
                     key={env.id}
@@ -445,7 +441,7 @@ export default function App() {
               transition={{ duration: 0.6, ease: "backOut" }}
               className="text-center"
             >
-              <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center mb-8 mx-auto shadow-2xl shadow-indigo-500/20 border border-indigo-400/30">
+              <div className="w-24 h-24 bg-blue-900 rounded-[2.5rem] flex items-center justify-center mb-8 mx-auto shadow-2xl shadow-blue-500/20 border border-blue-400/30">
                 <ArrowRightLeft className="w-12 h-12 text-white animate-pulse" />
               </div>
               <h1 className="text-4xl font-bold tracking-tighter uppercase mb-2">
@@ -473,12 +469,12 @@ export default function App() {
                   onClick={() => setSelectedEnv(null)}
                   className="flex items-center gap-3 group text-left"
                 >
-                  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:rotate-6 transition-all duration-500">
+                  <div className="w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(30,58,138,0.4)] group-hover:rotate-6 transition-all duration-500">
                     <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-white font-black tracking-tight uppercase text-lg sm:text-xl leading-none">Gestão integrada</span>
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1 font-mono">
+                    <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest mt-1 font-mono">
                       {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
                     </span>
                   </div>
@@ -537,7 +533,7 @@ export default function App() {
                         onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all ${
                           activeTab === item.id 
-                          ? 'bg-indigo-600 text-white' 
+                          ? 'bg-blue-900 text-white' 
                           : 'text-slate-400 hover:bg-slate-800'
                         }`}
                       >
@@ -548,7 +544,7 @@ export default function App() {
                     <div className="pt-4 mt-2 border-t border-slate-800">
                       <button 
                         onClick={() => { window.print(); setIsMobileMenuOpen(false); }} 
-                        className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-400/10"
+                        className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold text-blue-400 bg-blue-400/10"
                       >
                         <Printer size={20} />
                         <span>EXPORTAR RELATÓRIO</span>
@@ -569,7 +565,7 @@ export default function App() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-1 w-6 sm:w-10 bg-blue-900 rounded-full" />
                   <span className="text-[10px] sm:text-sm font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em]">
-                    {selectedEnv === 'geral' ? 'Visão Consolidada CDTO' : `Ambiente ${selectedEnv}`}
+                    {selectedEnv === 'geral' ? 'Visão Consolidada' : `Ambiente ${selectedEnv}`}
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
@@ -626,19 +622,19 @@ export default function App() {
                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100 flex-shrink-0">
                      <button 
                        onClick={() => setDashboardDateFilter('semana')}
-                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Semana
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('mes')}
-                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Mês
                      </button>
                      <button 
                        onClick={() => setDashboardDateFilter('ano')}
-                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                       className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Ano
                      </button>
@@ -649,7 +645,7 @@ export default function App() {
                        <button
                          key={dia.id}
                          onClick={() => setDashboardDateFilter(dia.id)}
-                         className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all min-w-[50px] sm:min-w-[60px] flex-shrink-0 ${dashboardDateFilter === dia.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                         className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all min-w-[50px] sm:min-w-[60px] flex-shrink-0 ${dashboardDateFilter === dia.id ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
                        </button>
@@ -663,18 +659,23 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Volume Consolidado</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
-                            <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇS</span>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Fluxo Consolidado</p>
+                          <div className="flex flex-col">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
+                              <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇS</span>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                              Alvo: {stats.totalPecas?.toLocaleString()}
+                            </p>
                           </div>
                         </div>
                         <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                             <div className="w-2 h-2 rounded-full bg-blue-500" />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
                           </div>
-                          <BarChart2 size={24} className="text-slate-100 group-hover:text-indigo-100 transition-colors hidden sm:block" />
+                          <BarChart2 size={24} className="text-slate-100 group-hover:text-blue-100 transition-colors hidden sm:block" />
                         </div>
                       </div>
 
@@ -682,7 +683,7 @@ export default function App() {
                         <div>
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Produtividade Global</p>
                           <div className="flex items-baseline gap-2">
-                            <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
                             </span>
                             <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇ / H</span>
@@ -690,10 +691,10 @@ export default function App() {
                         </div>
                         <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
-                             <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                             <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          {stats.productivity >= 65 ? <CheckCircle2 size={22} className="text-emerald-500" /> : <AlertTriangle size={22} className="text-rose-500" />}
+                          {stats.productivity >= 65 ? <CheckCircle2 size={22} className="text-blue-600" /> : <AlertTriangle size={22} className="text-red-700" />}
                         </div>
                       </div>
 
@@ -723,9 +724,9 @@ export default function App() {
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
-                               <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50">
-                                 <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Capacidade Mês</p>
-                                 <p className="text-lg font-black text-indigo-900">
+                               <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/50">
+                                 <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Capacidade Mês</p>
+                                 <p className="text-lg font-black text-red-900">
                                    {Math.round((manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal) * manualGlobalJornada * 65 * 22).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
@@ -758,10 +759,10 @@ export default function App() {
                         </div>
                         <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                             <div className="w-2 h-2 rounded-full bg-blue-500" />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Simulação de Impacto</span>
                           </div>
-                          <Activity size={20} className="text-emerald-500 opacity-50 hidden sm:block" />
+                          <Activity size={20} className="text-blue-500 opacity-50 hidden sm:block" />
                         </div>
                       </div>
                     </div>
@@ -784,7 +785,7 @@ export default function App() {
                                    <p className="text-lg sm:text-xl font-black text-slate-800">{env.totalPecas.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">PÇS</span></p>
                                  </div>
                                  <div className="text-right">
-                                   <p className="text-[9px] sm:text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
+                                   <p className="text-[9px] sm:text-[10px] font-black text-blue-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
                                    <p className="text-xs sm:text-sm font-black text-slate-600">{Math.round((env.totalPecas / stats.totalPecas) * 100)}%</p>
                                  </div>
                                </div>
@@ -793,7 +794,7 @@ export default function App() {
                                    initial={{ width: 0 }}
                                    animate={{ width: `${(env.totalPecas / stats.totalPecas) * 100}%` }}
                                    transition={{ duration: 1, ease: "circOut" }}
-                                   className={`h-full ${env.env === 'recebimento' ? 'bg-indigo-600' : 'bg-emerald-600'}`}
+                                   className={`h-full ${env.env === 'recebimento' ? 'bg-blue-900' : 'bg-red-800'}`}
                                  />
                                </div>
                              </div>
@@ -825,34 +826,50 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  /* STANDARD DASHBOARD VIEW */
                   <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 no-print">
-                      <div className="bg-indigo-50/50 p-4 sm:p-5 rounded-2xl border border-indigo-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Hoje</p>
-                          <p className="text-lg sm:text-2xl font-black text-indigo-900">
-                            {stats.isDayView 
-                              ? (stats.realPecas ?? 0).toLocaleString()
-                              : (data.atual.find(d => d.id === dashboardDateFilter)?.pecas ?? 0).toLocaleString()
-                            }
-                          </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 no-print">
+                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Diário</p>
+                          <div className="flex flex-col">
+                            <p className="text-lg sm:text-2xl font-black text-blue-900 leading-none">
+                              {stats.isDayView 
+                                ? (stats.realPecas ?? 0).toLocaleString()
+                                : Math.round(stats.realPecas / 6).toLocaleString()
+                              }
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                              Alvo: {stats.isDayView 
+                                ? (stats.totalPecas ?? 0).toLocaleString()
+                                : Math.round(stats.totalPecas / 6).toLocaleString()
+                              }
+                            </p>
+                          </div>
                       </div>
-                      <div className="bg-emerald-50/50 p-4 sm:p-5 rounded-2xl border border-emerald-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Semana</p>
-                          <p className="text-lg sm:text-2xl font-black text-emerald-900">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                      <div className="bg-red-50/50 p-4 sm:p-5 rounded-2xl border border-red-100/50">
+                          <p className="text-[9px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-1">Semanal</p>
+                          <div className="flex flex-col">
+                            <p className="text-lg sm:text-2xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                          </div>
                       </div>
                       <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Mês (Proj.)</p>
-                          <p className="text-lg sm:text-2xl font-black text-blue-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 4).toLocaleString()}</p>
+                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Mensal</p>
+                          <div className="flex flex-col">
+                            <p className="text-lg sm:text-2xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                          </div>
                       </div>
                       <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ano (Proj.)</p>
-                          <p className="text-lg sm:text-2xl font-black text-slate-900">{(data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0) * 48).toLocaleString()}</p>
+                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Anual</p>
+                          <div className="flex flex-col">
+                            <p className="text-lg sm:text-2xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                          </div>
                       </div>
                   </div>
 
                 <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
                   <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                        <div>
@@ -860,7 +877,7 @@ export default function App() {
                          <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Projeção de Performance Global</p>
                        </div>
                        <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Live Dashboard</span>
                        </div>
                     </div>
@@ -878,8 +895,8 @@ export default function App() {
                          return (
                            <div key={period} className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:bg-white/[0.07] transition-all group">
                              <div className="flex items-center justify-between mb-4">
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{label}</span>
-                                <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{label}</span>
+                                <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? 'bg-blue-600/20 text-blue-400' : 'bg-red-800/20 text-red-500'}`}>
                                   {isOk ? 'Meta OK' : 'Abaixo'}
                                 </div>
                              </div>
@@ -890,17 +907,17 @@ export default function App() {
                                </div>
                                <div className="pt-3 border-t border-white/5">
                                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Realizado / Movim.</p>
-                                 <p className={`text-2xl font-black ${isOk ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                 <p className={`text-2xl font-black ${isOk ? 'text-blue-400' : 'text-red-500'}`}>
                                    {real.toLocaleString()}
                                  </p>
                                </div>
                                <div className="flex items-center justify-between pt-2">
-                                  <span className={`text-[10px] font-black uppercase ${isOk ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                  <span className={`text-[10px] font-black uppercase ${isOk ? 'text-blue-500' : 'text-red-600'}`}>
                                     {diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()}
                                   </span>
                                   <div className="h-1 flex-1 mx-3 bg-white/5 rounded-full overflow-hidden">
                                      <div 
-                                       className={`h-full rounded-full transition-all duration-1000 ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                                       className={`h-full rounded-full transition-all duration-1000 ${isOk ? 'bg-blue-600' : 'bg-red-800'}`} 
                                        style={{ width: `${Math.min(100, (real / (demand || 1)) * 100)}%` }}
                                      />
                                   </div>
@@ -923,7 +940,7 @@ export default function App() {
                       </span>
                       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-3 gap-2">
                         <div>
-                          <span className="text-2xl sm:text-4xl font-black text-indigo-600 leading-none">{stats.mediaHeadcountTotal}</span>
+                          <span className="text-2xl sm:text-4xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
                           <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">
                             {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
@@ -931,7 +948,7 @@ export default function App() {
                             <div className="text-right sm:block hidden">
                               {selectedEnv === 'separacao' && (
                                 <div className="mb-2">
-                                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Prod. Média</p>
+                                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
                                   <p className="text-lg font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[9px] text-slate-400">PÇ/H</span></p>
                                 </div>
                               )}
@@ -950,7 +967,7 @@ export default function App() {
                             <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
                             <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
                           </div>
-                          <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-blue-600' : 'text-red-800'}`}>
                             {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
                           </span>
                         </div>
@@ -963,7 +980,7 @@ export default function App() {
                           <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
                           <p id="ref-auxiliar-target" className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
                         </div>
-                        <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-blue-600' : 'text-red-800'}`}>
                           {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
                         </span>
                       </div>
@@ -979,15 +996,15 @@ export default function App() {
                             <span className="text-xl sm:text-2xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
                           </div>
                           <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Real Movim.</span>
-                            <span className={`text-xl sm:text-2xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Real Movim.</span>
+                            <span className={`text-xl sm:text-2xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
                               {(stats.realPecas ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
                         
                         <div className="flex items-center justify-between mt-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
                             {(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0)
                               ? `+${((stats.realPecas ?? 0) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'Excesso' : 'Extra'}` 
                               : `-${((stats.totalPecas ?? 0) - (stats.realPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
@@ -1004,7 +1021,7 @@ export default function App() {
                     <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden print:shadow-none print:break-inside-avoid">
                       <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                         <h3 className="text-sm font-bold text-slate-700 flex items-center uppercase">
-                          <span className="w-2 h-6 bg-indigo-500 rounded mr-3"></span>
+                          <span className="w-2 h-6 bg-blue-900 rounded mr-3"></span>
                           Análise de Performance vs Metas
                         </h3>
                       </div>
@@ -1055,7 +1072,7 @@ export default function App() {
                           return (
                             <div key={dia.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                               <div className="flex items-center gap-3">
-                                <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-emerald-500' : 'bg-rose-500')}`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-blue-600' : 'bg-red-800')}`} />
                                 <div>
                                   <p className="text-[11px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
                                   <p className="text-[10px] text-slate-400 font-bold">{dia.pecas.toLocaleString()} PÇS</p>
@@ -1064,14 +1081,14 @@ export default function App() {
                               <div className="flex items-center gap-6">
                                 {!isZero && selectedEnv !== 'separacao' && (
                                   <div className="text-right border-r border-slate-200 pr-5">
-                                    <p className={`text-sm font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                    <p className={`text-sm font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>
                                       {prodC}
                                     </p>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>
                                   </div>
                                 )}
                                 <div className="text-right min-w-[50px]">
-                                  <p className={`text-base font-black ${isZero ? 'text-slate-300' : (prodAOk ? 'text-emerald-600' : 'text-rose-600')}`}>
+                                  <p className={`text-base font-black ${isZero ? 'text-slate-300' : (prodAOk ? 'text-blue-900' : 'text-red-900')}`}>
                                     {isZero ? '--' : prodA}
                                   </p>
                                   {!isZero && <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{selectedEnv === 'separacao' ? 'PÇ/H' : 'A'} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>}
@@ -1087,29 +1104,56 @@ export default function App() {
                     <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-10 border border-slate-200 shadow-xl print:shadow-none print:p-6 print:break-inside-avoid">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
                       <div className="text-center md:text-left">
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-800 uppercase flex items-center gap-2 justify-center md:justify-start">
-                          RESUMO DE METAS
-                        </h3>
-                        <p className="text-slate-500 text-[10px] sm:text-xs font-medium mt-1">Equipe necessária para atingir o volume meta de {(metas.VOLUME || 0).toLocaleString()} PÇS.</p>
+                        <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-800 uppercase">
+                            ANÁLISE DE DIMENSIONAMENTO
+                          </h3>
+                          <div className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-tighter">Sugestão Inteligente</div>
+                        </div>
+                        <p className="text-slate-500 text-[10px] sm:text-xs font-medium">Dimensionamento ideal para processar <strong>{stats.horizons.dia.demand.toLocaleString()} PÇS/DIA</strong> com jornada de {stats.manualJornada || metas.JORNADA || 9}h</p>
                       </div>
                       <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
-                        {selectedEnv !== 'separacao' && (
-                          <div className="flex-1 bg-indigo-50 border border-indigo-100 p-4 sm:p-8 rounded-2xl sm:min-w-[160px] text-center">
-                            <p className="text-[8px] sm:text-[9px] font-black text-indigo-600 uppercase mb-1 sm:mb-2 tracking-widest">Conferentes</p>
-                            <p className="text-2xl sm:text-5xl font-black text-indigo-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.CONFERENTE || 220)}</p>
-                          </div>
-                        )}
-                        <div className="flex-1 bg-slate-50 border border-slate-200 p-4 sm:p-8 rounded-2xl sm:min-w-[160px] text-center">
-                          <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase mb-1 sm:mb-2 tracking-widest">Auxiliares</p>
-                          <p className="text-2xl sm:text-5xl font-black text-slate-900">{calculateSugerido(metas.VOLUME || 6000, metas.JORNADA || 9, metas.AUXILIAR || 110)}</p>
-                        </div>
+                        {selectedEnv !== 'separacao' && (() => {
+                          const sugerido = calculateSugerido(stats.horizons.dia.demand, stats.manualJornada || metas.JORNADA || 9, metas.CONFERENTE || 220);
+                          const atual = stats.mediaHeadcountConf || 0;
+                          const gap = atual - sugerido;
+                          return (
+                            <div className={`flex-1 ${gap < 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'} border p-4 sm:p-6 rounded-2xl sm:min-w-[160px] text-center transition-colors`}>
+                              <p className={`text-[8px] sm:text-[9px] font-black uppercase mb-1 sm:mb-2 tracking-widest ${gap < 0 ? 'text-red-900' : 'text-blue-900'}`}>{confLabel}s</p>
+                              <div className="flex items-baseline justify-center gap-1">
+                                <p className="text-2xl sm:text-4xl font-black text-slate-900">{sugerido}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Ideal</p>
+                              </div>
+                              <div className={`mt-2 text-[9px] font-black uppercase inline-flex items-center gap-1 px-2 py-0.5 rounded ${gap < 0 ? 'bg-red-600 text-white animate-pulse' : (gap > 0 ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white')}`}>
+                                {gap === 0 ? 'Equipe OK' : gap < 0 ? `Faltam ${Math.abs(gap)}` : `Sobram ${gap}`}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        {(() => {
+                          const sugerido = calculateSugerido(stats.horizons.dia.demand, stats.manualJornada || metas.JORNADA || 9, metas.AUXILIAR || 110);
+                          const atual = stats.mediaHeadcountAux || 0;
+                          const gap = atual - sugerido;
+                          return (
+                            <div className={`flex-1 ${gap < 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'} border p-4 sm:p-6 rounded-2xl sm:min-w-[160px] text-center transition-colors`}>
+                              <p className={`text-[8px] sm:text-[9px] font-black uppercase mb-1 sm:mb-2 tracking-widest ${gap < 0 ? 'text-red-900' : 'text-blue-900'}`}>Auxiliares</p>
+                              <div className="flex items-baseline justify-center gap-1">
+                                <p className="text-2xl sm:text-4xl font-black text-slate-900">{sugerido}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Ideal</p>
+                              </div>
+                              <div className={`mt-2 text-[9px] font-black uppercase inline-flex items-center gap-1 px-2 py-0.5 rounded ${gap < 0 ? 'bg-red-600 text-white animate-pulse' : (gap > 0 ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white')}`}>
+                                {gap === 0 ? 'Equipe OK' : gap < 0 ? `Faltam ${Math.abs(gap)}` : `Sobram ${gap}`}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
-                  </>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
+          )}
 
             {/* --- GESTÃO OPERACIONAL --- */}
             {activeTab === 'input' && (
@@ -1152,7 +1196,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
-                    <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600"><CalendarCheck size={24}/></div>
+                    <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><CalendarCheck size={24}/></div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dias com Atividade</p>
                       <p className="text-2xl font-black text-slate-800">{stats.diasAtivos} <span className="text-sm text-slate-400">DIAS</span></p>
@@ -1174,7 +1218,7 @@ export default function App() {
                         onClick={() => setFilterMode(option.id as any)}
                         className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
                           filterMode === option.id 
-                          ? 'bg-white text-indigo-600 shadow-sm' 
+                          ? 'bg-white text-blue-900 shadow-sm' 
                           : 'text-slate-500 hover:text-slate-800'
                         }`}
                       >
@@ -1210,23 +1254,23 @@ export default function App() {
                     return (
                       <div id={`card-${item.id}`} key={item.id} className={`bg-white rounded-3xl border overflow-hidden shadow-sm transition-all duration-300 print:shadow-none print:border-slate-200 ${
                         hasData 
-                        ? (allOk ? 'border-emerald-200 ring-1 ring-emerald-50' : 'border-rose-200 ring-1 ring-rose-50') 
-                        : 'border-slate-200 hover:border-indigo-200'
+                        ? (allOk ? 'border-blue-200 ring-1 ring-blue-50' : 'border-red-200 ring-1 ring-red-50') 
+                        : 'border-slate-200 hover:border-blue-200'
                       }`}>
-                        <div className={`px-6 py-4 flex justify-between items-center ${hasData ? (allOk ? 'bg-emerald-50/30' : 'bg-rose-50/30') : 'bg-slate-50'}`}>
+                        <div className={`px-6 py-4 flex justify-between items-center ${hasData ? (allOk ? 'bg-blue-50/30' : 'bg-red-50/30') : 'bg-slate-50'}`}>
                           <div>
                             <h3 className="font-bold text-xs uppercase text-slate-800 tracking-tight">{item.dia}</h3>
                             {hasData && (
                               <div className="flex flex-col gap-1 mt-1">
                                 <div className="flex items-center gap-1.5">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${volumeOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${volumeOk ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${volumeOk ? 'bg-blue-600' : 'bg-red-600'}`} />
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${volumeOk ? 'text-blue-800' : 'text-red-900'}`}>
                                     Demanda: {volumeOk ? 'Comprometida' : 'Abaixo do Alvo'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${realOk ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${realOk ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${realOk ? 'bg-blue-600' : 'bg-red-600'}`} />
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${realOk ? 'text-blue-800' : 'text-red-900'}`}>
                                     Fluxo: {(Number(item.real) || 0).toLocaleString()} PÇS {realOk ? '(OK)' : (selectedEnv === 'recebimento' ? '(NO-SHOW)' : '(PENDENTE)')}
                                   </span>
                                 </div>
@@ -1235,7 +1279,7 @@ export default function App() {
                           </div>
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                             hasData 
-                            ? (allOk ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/20') 
+                            ? (allOk ? 'bg-blue-900 text-white shadow-lg shadow-blue-500/20' : 'bg-red-900 text-white shadow-lg shadow-red-500/20') 
                             : 'bg-slate-200 text-slate-400'
                           }`}>
                             {hasData ? (allOk ? <Check size={20} /> : <AlertTriangle size={20} />) : <Circle size={20} />}
@@ -1243,24 +1287,24 @@ export default function App() {
                         </div>
 
                         <div className="p-6 space-y-5 print:p-4 print:space-y-3">
-                          <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex flex-col gap-3 mb-4">
+                          <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col gap-3 mb-4">
                               <div className="flex justify-between items-center">
-                                 <span className="text-xs font-black text-indigo-950 uppercase tracking-widest">Dimensionamento do Dia</span>
+                                 <span className="text-xs font-black text-blue-950 uppercase tracking-widest">Dimensionamento do Dia</span>
                               </div>
                               <div className="grid grid-cols-3 gap-2">
-                                 <div className="bg-white p-2 rounded-xl border border-indigo-100 text-center shadow-sm">
+                                 <div className="bg-white p-2 rounded-xl border border-blue-100 text-center shadow-sm">
                                    <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Total Homens</p>
-                                   <p className="text-xl font-black text-indigo-950">{totalSugerido}</p>
+                                   <p className="text-xl font-black text-blue-950">{totalSugerido}</p>
                                  </div>
                                  {selectedEnv !== 'separacao' && (
-                                   <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
+                                   <div className={`p-2 rounded-xl text-center border transition-all ${staffingCOk ? 'bg-white border-blue-100' : 'bg-red-50 border-red-200 shadow-sm'}`}>
                                      <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Sug. {confLabel.substring(0, 4)}</p>
-                                     <p className={`text-xl font-black ${staffingCOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugC}</p>
+                                     <p className={`text-xl font-black ${staffingCOk ? 'text-blue-900' : 'text-red-900'}`}>{sugC}</p>
                                    </div>
                                  )}
-                                 <div className={`p-2 rounded-xl text-center border transition-all ${staffingAOk ? 'bg-white border-emerald-100' : 'bg-rose-50 border-rose-200 shadow-sm'}`}>
+                                 <div className={`p-2 rounded-xl text-center border transition-all ${staffingAOk ? 'bg-white border-blue-100' : 'bg-red-50 border-red-200 shadow-sm'}`}>
                                    <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Sug. Aux</p>
-                                   <p className={`text-xl font-black ${staffingAOk ? 'text-emerald-600' : 'text-rose-600'}`}>{sugA}</p>
+                                   <p className={`text-xl font-black ${staffingAOk ? 'text-blue-900' : 'text-red-900'}`}>{sugA}</p>
                                  </div>
                               </div>
                           </div>
@@ -1270,16 +1314,16 @@ export default function App() {
                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Volume (PÇS)</label>
                               <input 
                                 type="number" 
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
                                 value={item.pecas || ''} 
                                 onChange={(e) => updateDataField(item.id, 'pecas', e.target.value)} 
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-xs font-bold text-indigo-400 uppercase tracking-widest ml-1">Real Movim.</label>
+                              <label className="text-xs font-bold text-blue-400 uppercase tracking-widest ml-1">Real Movim.</label>
                               <input 
                                 type="number" 
-                                className="w-full p-4 bg-indigo-50/30 border border-indigo-100 rounded-xl font-black text-center text-indigo-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-blue-50/30 border border-blue-100 rounded-xl font-black text-center text-blue-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
                                 value={item.real || ''} 
                                 onChange={(e) => updateDataField(item.id, 'real', e.target.value)} 
                               />
@@ -1292,7 +1336,7 @@ export default function App() {
                               <input 
                                 type="number" 
                                 step="0.5"
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
                                 value={item.jornada || ''} 
                                 onChange={(e) => updateDataField(item.id, 'jornada', e.target.value)} 
                               />
@@ -1312,12 +1356,12 @@ export default function App() {
                                 <div className="relative">
                                   <input 
                                     type="number" 
-                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-indigo-600 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-blue-900 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
                                     value={item.conferentes || ''} 
                                     onChange={(e) => updateDataField(item.id, 'conferentes', e.target.value)} 
                                   />
                                   {hasData && (
-                                    <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingCOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                                    <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingCOk ? 'bg-blue-900 text-white' : 'bg-red-800 text-white animate-pulse'}`}>
                                       {diffC > 0 ? `+${diffC}` : diffC < 0 ? diffC : 'OK'}
                                     </div>
                                   )}
@@ -1329,12 +1373,12 @@ export default function App() {
                               <div className="relative">
                                 <input 
                                   type="number" 
-                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-600 focus:bg-white focus:border-indigo-500 outline-none transition-all text-lg"
+                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-600 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
                                   value={item.auxiliares || ''} 
                                   onChange={(e) => updateDataField(item.id, 'auxiliares', e.target.value)} 
                                 />
                                 {hasData && (
-                                  <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingAOk ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                                  <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingAOk ? 'bg-blue-600 text-white' : 'bg-red-800 text-white animate-pulse'}`}>
                                     {diffA > 0 ? `+${diffA}` : diffA < 0 ? diffA : 'OK'}
                                   </div>
                                 )}
@@ -1346,12 +1390,12 @@ export default function App() {
                               {selectedEnv !== 'separacao' && (
                                 <div className="text-center">
                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
-                                  <p id={`prod-real-c-${item.id}`} className={`text-xl font-black ${prodCOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodC} <span className="text-xs text-slate-400">/ {metas.CONFERENTE}</span></p>
+                                  <p id={`prod-real-c-${item.id}`} className={`text-xl font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>{prodC} <span className="text-xs text-slate-400">/ {metas.CONFERENTE}</span></p>
                                 </div>
                               )}
                               <div className="text-center border-l border-slate-100">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
-                                <p id={`prod-real-a-${item.id}`} className={`text-xl font-black ${prodAOk ? 'text-indigo-600' : 'text-rose-600'}`}>{prodA} <span className="text-xs text-slate-400">/ {metas.AUXILIAR}</span></p>
+                                <p id={`prod-real-a-${item.id}`} className={`text-xl font-black ${prodAOk ? 'text-blue-900' : 'text-red-900'}`}>{prodA} <span className="text-xs text-slate-400">/ {metas.AUXILIAR}</span></p>
                               </div>
                             </div>
                         </div>
@@ -1451,54 +1495,54 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-5">
-                      {selectedEnv !== 'separacao' && (
-                        <div className="bg-blue-900 p-12 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
+                      <div className="space-y-6 relative z-10">
+                        {selectedEnv !== 'separacao' && (
+                          <div className="bg-blue-900 p-12 rounded-3xl text-white shadow-xl shadow-blue-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
+                            <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">{confLabel}s (Ajustável)</p>
+                            <input 
+                              type="number" 
+                              className="w-full bg-transparent text-8xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
+                              value={calcData.conf || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                setCalcData(prev => {
+                                  const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaConf);
+                                  return {
+                                    ...prev, 
+                                    conf: val,
+                                    pecas: newPecas,
+                                    aux: val === 0 ? prev.aux : calculateSugerido(newPecas, prev.jornada, prev.metaAux)
+                                  };
+                                });
+                              }}
+                            />
+                            <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
+                          </div>
+                        )}
+                        <div className="bg-red-800 p-12 rounded-3xl text-white shadow-xl shadow-red-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
                           <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
-                          <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">{confLabel}s (Ajustável)</p>
+                          <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Auxiliares (Ajustável)</p>
                           <input 
                             type="number" 
                             className="w-full bg-transparent text-8xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
-                            value={calcData.conf || ''} 
+                            value={calcData.aux || ''} 
                             onChange={(e) => {
                               const val = e.target.value === '' ? 0 : Number(e.target.value);
                               setCalcData(prev => {
-                                const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaConf);
+                                const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaAux);
                                 return {
                                   ...prev, 
-                                  conf: val,
+                                  aux: val,
                                   pecas: newPecas,
-                                  aux: val === 0 ? prev.aux : calculateSugerido(newPecas, prev.jornada, prev.metaAux)
+                                  conf: val === 0 ? prev.conf : calculateSugerido(newPecas, prev.jornada, prev.metaConf)
                                 };
                               });
                             }}
                           />
-                          <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaConf} PÇ / H</p>
+                          <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaAux} PÇ / H</p>
                         </div>
-                      )}
-                      <div className="bg-red-800 p-12 rounded-3xl text-white shadow-xl shadow-red-950/20 text-center relative overflow-hidden group/card hover:scale-[1.02] transition-transform">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-white/20 group-hover/card:h-full transition-all duration-700 opacity-10" />
-                        <p className="text-xs font-bold uppercase opacity-80 mb-3 tracking-widest relative z-10">Auxiliares (Ajustável)</p>
-                        <input 
-                          type="number" 
-                          className="w-full bg-transparent text-8xl font-black relative z-10 tracking-tighter text-center outline-none focus:scale-110 transition-transform"
-                          value={calcData.aux || ''} 
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? 0 : Number(e.target.value);
-                            setCalcData(prev => {
-                              const newPecas = val === 0 ? prev.pecas : Math.round(val * prev.jornada * prev.metaAux);
-                              return {
-                                ...prev, 
-                                aux: val,
-                                pecas: newPecas,
-                                conf: val === 0 ? prev.conf : calculateSugerido(newPecas, prev.jornada, prev.metaConf)
-                              };
-                            });
-                          }}
-                        />
-                        <p className="text-[11px] font-bold mt-4 opacity-50 uppercase relative z-10 tracking-widest">Base: {calcData.metaAux} PÇ / H</p>
                       </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1521,18 +1565,18 @@ export default function App() {
                       <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Meta Vol.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-indigo-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                         value={metas.VOLUME || ''} 
                         onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
                       <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / DIA</p>
                     </div>
                     <div className="space-y-3 sm:space-y-4 text-center">
-                      <label className="text-[9px] sm:text-xs font-bold uppercase text-emerald-400 tracking-widest leading-none block h-3">Jornada</label>
+                      <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Jornada</label>
                       <input 
                         type="number" 
                         step="0.5"
-                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-emerald-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                         value={metas.JORNADA || ''} 
                         onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
@@ -1540,7 +1584,7 @@ export default function App() {
                     </div>
                     {selectedEnv !== 'separacao' && (
                       <div className="space-y-3 sm:space-y-4 text-center">
-                        <label className="text-[9px] sm:text-xs font-bold uppercase text-indigo-400 tracking-widest leading-none block h-3">Alvo {confLabel.substring(0, 4)}.</label>
+                        <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Alvo {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
                           className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
