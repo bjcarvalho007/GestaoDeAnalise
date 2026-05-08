@@ -1151,7 +1151,7 @@ export default function App() {
                           </h3>
                           <div className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-tighter">Sugestão Inteligente</div>
                         </div>
-                        <p className="text-slate-500 text-[10px] sm:text-xs font-medium">Dimensionamento ideal para processar <strong>{stats.horizons.dia.demand.toLocaleString()} PÇS/DIA</strong> com jornada de {stats.manualJornada || metas.JORNADA || 9}h</p>
+                        <p className="text-slate-500 text-[10px] sm:text-xs font-medium">Dimensionamento ideal para processar <strong>{stats.horizons.dia.demand.toLocaleString()} PÇS/DIA</strong> {stats.horizons.dia.real > 0 && <span>(Real: <strong>{stats.horizons.dia.real.toLocaleString()}</strong>)</span>} com jornada de {stats.manualJornada || metas.JORNADA || 9}h</p>
                       </div>
                       <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
                         {selectedEnv !== 'separacao' && (() => {
@@ -1165,6 +1165,11 @@ export default function App() {
                                 <p className="text-2xl sm:text-4xl font-black text-slate-900">{sugerido}</p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Ideal</p>
                               </div>
+                              {stats.horizons.dia.real > 0 && (
+                                <div className="mt-1 text-[9px] font-bold text-blue-900/60 uppercase">
+                                  Real: {calculateSugerido(stats.horizons.dia.real, stats.manualJornada || metas.JORNADA || 9, metas.CONFERENTE || 220)} sug.
+                                </div>
+                              )}
                               <div className={`mt-2 text-[9px] font-black uppercase inline-flex items-center gap-1 px-2 py-0.5 rounded ${gap < 0 ? 'bg-red-600 text-white animate-pulse' : (gap > 0 ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white')}`}>
                                 {gap === 0 ? 'Equipe OK' : gap < 0 ? `Faltam ${Math.abs(gap)}` : `Sobram ${gap}`}
                               </div>
@@ -1182,6 +1187,11 @@ export default function App() {
                                 <p className="text-2xl sm:text-4xl font-black text-slate-900">{sugerido}</p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Ideal</p>
                               </div>
+                              {stats.horizons.dia.real > 0 && (
+                                <div className="mt-1 text-[9px] font-bold text-blue-900/60 uppercase">
+                                  Real: {calculateSugerido(stats.horizons.dia.real, stats.manualJornada || metas.JORNADA || 9, metas.AUXILIAR || 110)} sug.
+                                </div>
+                              )}
                               <div className={`mt-2 text-[9px] font-black uppercase inline-flex items-center gap-1 px-2 py-0.5 rounded ${gap < 0 ? 'bg-red-600 text-white animate-pulse' : (gap > 0 ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white')}`}>
                                 {gap === 0 ? 'Equipe OK' : gap < 0 ? `Faltam ${Math.abs(gap)}` : `Sobram ${gap}`}
                               </div>
@@ -1303,6 +1313,11 @@ export default function App() {
                     const sugC = calculateSugerido(localPecas, localJornada, metas.CONFERENTE || 220);
                     const sugA = calculateSugerido(localPecas, localJornada, metas.AUXILIAR || 110);
                     const totalSugerido = selectedEnv === 'separacao' ? sugA : sugC + sugA;
+
+                    const localRealVolume = Number(item.real) || 0;
+                    const sugCReal = calculateSugerido(localRealVolume, localJornada, metas.CONFERENTE || 220);
+                    const sugAReal = calculateSugerido(localRealVolume, localJornada, metas.AUXILIAR || 110);
+                    const totalSugeridoReal = selectedEnv === 'separacao' ? sugAReal : sugCReal + sugAReal;
                     
                     const prodC = calculateProdReal(localPecas, Number(item.conferentes) || 0, localJornada);
                     const prodA = calculateProdReal(localPecas, Number(item.auxiliares) || 0, localJornada);
@@ -1355,8 +1370,9 @@ export default function App() {
 
                         <div className="p-6 space-y-5 print:p-4 print:space-y-3">
                           <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col gap-3 mb-4">
-                              <div className="flex justify-between items-center">
+                              <div className="flex justify-between items-baseline">
                                  <span className="text-xs font-black text-blue-950 uppercase tracking-widest">Dimensionamento do Dia</span>
+                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Sugestão p/ Programado</span>
                               </div>
                               <div className="grid grid-cols-3 gap-2">
                                  <div className="bg-white p-2 rounded-xl border border-blue-100 text-center shadow-sm">
@@ -1373,6 +1389,28 @@ export default function App() {
                                    <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Sug. Aux</p>
                                    <p className={`text-xl font-black ${staffingAOk ? 'text-blue-900' : 'text-red-900'}`}>{sugA}</p>
                                  </div>
+                              </div>
+
+                              <div className="mt-2 pt-2 border-t border-blue-100/50">
+                                <div className="flex justify-between items-baseline mb-2">
+                                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ajuste p/ Real Movimentado</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                   <div className="bg-blue-100/30 p-2 rounded-xl border border-blue-100 text-center shadow-sm">
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Total Sug.</p>
+                                     <p className="text-xl font-black text-blue-900">{totalSugeridoReal}</p>
+                                   </div>
+                                   {selectedEnv !== 'separacao' && (
+                                     <div className="bg-blue-100/30 p-2 rounded-xl border border-blue-100 text-center shadow-sm">
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">{confLabel.substring(0, 4)}</p>
+                                       <p className="text-xl font-black text-blue-900">{sugCReal}</p>
+                                     </div>
+                                   )}
+                                   <div className="bg-blue-100/30 p-2 rounded-xl border border-blue-100 text-center shadow-sm">
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Auxiliar</p>
+                                     <p className="text-xl font-black text-blue-900">{sugAReal}</p>
+                                   </div>
+                                </div>
                               </div>
                           </div>
 
