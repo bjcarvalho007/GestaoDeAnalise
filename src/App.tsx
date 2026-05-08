@@ -167,7 +167,7 @@ export default function App() {
 
   useEffect(() => {
     // Splash screen animation delay
-    const timer = setTimeout(() => setShowSplash(false), 2500);
+    const timer = setTimeout(() => setShowSplash(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -362,6 +362,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="fixed inset-0 z-50 bg-[#F1F5F9] flex items-center justify-center p-6"
           >
             <div className="max-w-4xl w-full text-center space-y-8 sm:space-y-12">
@@ -382,7 +383,7 @@ export default function App() {
                   <button
                     key={env.id}
                     onClick={() => setSelectedEnv(env.id as Environment)}
-                    className="group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-lg hover:shadow-2xl transition-all duration-500 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0"
+                    className="group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-lg hover:shadow-2xl transition-all duration-300 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0"
                   >
                     <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 group-hover:bg-blue-50 transition-colors" />
                     <div className={`${env.color} w-12 sm:w-16 h-12 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 group-hover:scale-110 transition-transform`}>
@@ -414,13 +415,13 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.8, ease: "circOut" }}
+            transition={{ duration: 0.5, ease: "circOut" }}
             className="fixed inset-0 z-[100] bg-[#0F172A] flex flex-col items-center justify-center text-white"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1, ease: "backOut" }}
+              transition={{ duration: 0.6, ease: "backOut" }}
               className="text-center"
             >
               <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center mb-8 mx-auto shadow-2xl shadow-indigo-500/20 border border-indigo-400/30">
@@ -433,7 +434,7 @@ export default function App() {
                 <motion.div 
                   initial={{ left: "-100%" }}
                   animate={{ left: "100%" }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                   className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-red-800 to-transparent"
                 />
               </div>
@@ -598,7 +599,7 @@ export default function App() {
 
             {/* --- DASHBOARD --- */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-8 animate-in duration-500 print:space-y-6">
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 print:space-y-6">
                 {/* Date Filter Bar */}
                 <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-fit overflow-x-auto">
                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100 flex-shrink-0">
@@ -693,7 +694,24 @@ export default function App() {
                               <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase self-end mb-2 sm:mb-3">Colab.</span>
                             </div>
                             
-                            <div className="pt-4 sm:pt-5 border-t border-slate-100 flex items-center justify-between">
+                            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+                               <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                                 <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Capacidade Dia</p>
+                                 <p className="text-lg font-black text-blue-900">
+                                   {Math.round((manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal) * manualGlobalJornada * 65).toLocaleString()}
+                                   <span className="text-[10px] ml-1">PÇS</span>
+                                 </p>
+                               </div>
+                               <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50">
+                                 <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Capacidade Mês</p>
+                                 <p className="text-lg font-black text-indigo-900">
+                                   {Math.round((manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal) * manualGlobalJornada * 65 * 22).toLocaleString()}
+                                   <span className="text-[10px] ml-1">PÇS</span>
+                                 </p>
+                               </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
                               <div className="flex flex-col">
                                 <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Jornada</span>
                                 <div className="flex items-center gap-2">
@@ -793,8 +811,8 @@ export default function App() {
                           <p className="text-[9px] sm:text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Hoje</p>
                           <p className="text-lg sm:text-2xl font-black text-indigo-900">
                             {stats.isDayView 
-                              ? stats.realPecas.toLocaleString()
-                              : (data.atual.find(d => d.id === new Date().getDay().toString())?.pecas || '0').toLocaleString()
+                              ? (stats.realPecas ?? 0).toLocaleString()
+                              : (data.atual.find(d => d.id === dashboardDateFilter)?.pecas ?? 0).toLocaleString()
                             }
                           </p>
                       </div>
@@ -864,18 +882,28 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                        {stats.isDayView ? 'Volume Real' : stats.isYearView ? 'Volume Est. Ano' : stats.isMonthView ? 'Volúme Est. Mês' : 'Volume Período'}
+                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                        {stats.isDayView ? 'Fluxo vs Demanda' : stats.isYearView ? 'Vol. Ano Est.' : stats.isMonthView ? 'Vol. Mês Est.' : 'Volume Período'}
                       </span>
-                      <div className="flex items-end justify-between mt-3">
-                        <span className="text-4xl font-black text-slate-800">{stats.totalPecas?.toLocaleString()}</span>
-                        <div className="text-right">
-                          {!stats.isDayView && (
-                            <p className="text-[11px] font-black text-rose-500 uppercase tracking-tighter leading-none mb-1">Produzido: {stats.realPecas?.toLocaleString()}</p>
-                          )}
-                          <span className="text-xs font-bold text-emerald-500 uppercase block tracking-tighter leading-none">
-                            {stats.isDayView ? 'Hoje' : stats.isYearView ? 'Previsão Anual' : stats.isMonthView ? 'Projecção' : `${stats.diasAtivos} Dias`}
+                      <div className="flex flex-col mt-3">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className={`text-2xl sm:text-4xl font-black leading-none ${(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos ?? 1)) ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {(stats.totalPecas ?? 0).toLocaleString()}
+                          </span>
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400">
+                            / {(stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1)).toLocaleString()}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-2">
+                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) ? 'text-emerald-500' : 'text-amber-500'}`}>
+                            {(stats.totalPecas ?? 0) >= (stats.isDayView ? (metas.VOLUME ?? 0) : (metas.VOLUME ?? 0) * (stats.diasAtivos || 1))
+                              ? `+${((stats.totalPecas ?? 0) - ((metas.VOLUME ?? 0) * (stats.diasAtivos || 1))).toLocaleString()} Superávit` 
+                              : `-${(((metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
+                          </p>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {Math.round(((stats.totalPecas ?? 0) / (((metas.VOLUME ?? 0) * (stats.diasAtivos || 1)) || 1)) * 100)}%
                           </span>
                         </div>
                       </div>
@@ -1017,7 +1045,7 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="space-y-8 animate-in slide-in-from-right-5 duration-500 print:space-y-0 print:animate-none">
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-5 duration-300 print:space-y-0 print:animate-none">
                 <div className="hidden md:flex items-center gap-6 no-print">
                   <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
                     <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={24}/></div>
@@ -1228,7 +1256,7 @@ export default function App() {
 
             {/* --- CALCULADORA --- */}
             {activeTab === 'calculadora' && (
-              <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-500 no-print">
+              <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-300 no-print">
                 <div className="bg-white p-12 md:p-16 rounded-[2.5rem] border border-slate-200 shadow-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none group-hover:bg-blue-100/50 transition-colors duration-1000" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
@@ -1369,7 +1397,7 @@ export default function App() {
 
             {/* --- CONFIGURAÇÕES --- */}
             {activeTab === 'meta' && (
-              <div className="max-w-2xl mx-auto animate-in fade-in duration-500 no-print">
+              <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-top-4 duration-300 no-print">
                 <div className="bg-[#1E293B] p-12 md:p-16 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden border border-slate-700">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-800 to-transparent" />
                   <div className="text-center mb-8 sm:mb-12">
