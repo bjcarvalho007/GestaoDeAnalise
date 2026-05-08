@@ -243,6 +243,7 @@ export default function App() {
       let totalHeadcountGeneral = 0;
       let totalManHoursGeneral = 0;
       let ativosCountGeneral = 0;
+      let globalMonthlyReal = 0;
       
       const envStats = envs.map(env => {
         const envData = allData[env].atual;
@@ -252,6 +253,9 @@ export default function App() {
         
         const totalPecas = targetData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
         const totalReal = targetData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
+        const totalRealMonth = envData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
+        globalMonthlyReal += totalRealMonth;
+
         const totalMH = targetData.reduce((acc, curr) => {
            const jornada = Number(curr.jornada) || 9;
            const hc = (Number(curr.conferentes) || 0) + (Number(curr.auxiliares) || 0);
@@ -277,7 +281,8 @@ export default function App() {
           totalPecas: totalPecas,
           totalReal: totalReal,
           hcTotal,
-          ativos: ativos.length
+          ativos: ativos.length,
+          meta: env === 'separacao' ? metas.AUXILIAR : metas.CONFERENTE
         };
       });
 
@@ -286,7 +291,7 @@ export default function App() {
       const avgAtivos = ativosCountGeneral / (envs.length || 1);
       
       const simulatedMH = effectiveHC * effectiveJornada * avgAtivos;
-      const productivity = simulatedMH > 0 ? Number((totalPecasGeneral / simulatedMH).toFixed(2)) : 0;
+      const productivity = simulatedMH > 0 ? Number((totalRealGeneral / simulatedMH).toFixed(2)) : 0;
 
       const baseDemand = totalPecasGeneral / (isDayView ? 1 : 6);
       const baseReal = totalRealGeneral / (isDayView ? 1 : 6);
@@ -301,6 +306,7 @@ export default function App() {
         diasAtivos: ativosCountGeneral,
         productivity,
         envStats,
+        monthlyReal: globalMonthlyReal,
         isDayView,
         isWeekView,
         isMonthView,
@@ -660,20 +666,20 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Fluxo Consolidado</p>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-baseline gap-3">
-                              <span className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
-                              <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase">Real PÇS</span>
+                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Fluxo Consolidado</p>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-baseline gap-4">
+                              <span className="text-6xl sm:text-8xl font-black text-slate-900 tracking-tighter">{stats.totalPecas?.toLocaleString()}</span>
+                              <span className="text-sm sm:text-lg font-bold text-slate-500 uppercase">Total Programado</span>
                             </div>
-                            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 w-fit">
-                              <p className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-tight">
-                                Programado: <span className="text-blue-900 ml-1">{stats.totalPecas?.toLocaleString()}</span>
+                            <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 w-fit">
+                              <p className="text-sm sm:text-lg font-black text-slate-500 uppercase tracking-tight">
+                                Total Realizado: <span className="text-blue-900 ml-1">{stats.realPecas?.toLocaleString()}</span>
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div className="mt-8 sm:mt-12 flex items-center justify-between pt-6 sm:pt-8 border-t border-slate-100">
+                        <div className="mt-10 sm:mt-16 flex items-center justify-between pt-8 sm:pt-10 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-blue-500" />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
@@ -684,53 +690,61 @@ export default function App() {
 
                       <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Produtividade Global</p>
-                          <div className="flex items-baseline gap-3">
-                            <span className={`text-5xl sm:text-6xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
+                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Produtividade Global</p>
+                          <div className="flex items-baseline gap-4">
+                            <span className={`text-6xl sm:text-8xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
                             </span>
-                            <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase">PÇ / H</span>
+                            <span className="text-sm sm:text-lg font-bold text-slate-500 uppercase">PÇ / H</span>
                           </div>
                         </div>
-                        <div className="mt-8 sm:mt-12 flex items-center justify-between pt-6 sm:pt-8 border-t border-slate-100">
-                          <div className="flex items-center gap-2">
-                             <div className={`w-3 h-3 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
-                             <span className="text-xs font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
+                        <div className="mt-10 sm:mt-16 flex items-center justify-between pt-8 sm:pt-10 border-t border-slate-100">
+                          <div className="flex items-center gap-3">
+                             <div className={`w-4 h-4 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
+                             <span className="text-sm sm:text-base font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          {stats.productivity >= 65 ? <CheckCircle2 size={30} className="text-blue-600" /> : <AlertTriangle size={30} className="text-red-700" />}
+                          {stats.productivity >= 65 ? <CheckCircle2 size={40} className="text-blue-600" /> : <AlertTriangle size={40} className="text-red-700" />}
                         </div>
                       </div>
 
                       <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Efetivo Consolidado</p>
-                          <div className="flex flex-col gap-6 sm:gap-8">
-                            <div className="flex items-center gap-4 sm:gap-6">
+                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest mb-4 sm:mb-8">Efetivo Consolidado</p>
+                          <div className="flex flex-col gap-6 sm:gap-10">
+                            <div className="flex items-center gap-4 sm:gap-8">
                               <div className="flex flex-col">
-                                <span className="text-xs font-black text-slate-400 uppercase mb-2 tracking-tighter">Equipe (Editar)</span>
+                                <span className="text-sm font-black text-slate-400 uppercase mb-3 tracking-tighter">Equipe (Editar)</span>
                                 <input 
                                   type="number"
                                   value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
                                   onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
-                                  className="w-24 sm:w-36 text-4xl sm:text-5xl font-black text-blue-900 bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
+                                  className="w-28 sm:w-44 text-5xl sm:text-6xl font-black text-blue-900 bg-slate-50 rounded-2xl px-5 py-3 border border-slate-100 focus:ring-4 focus:ring-blue-500/20 outline-none shadow-inner transition-all"
                                   placeholder="0"
                                 />
                               </div>
-                              <span className="text-sm font-bold text-slate-400 uppercase self-end mb-3">Colab. Total</span>
+                              <span className="text-base sm:text-lg font-bold text-slate-400 uppercase self-end mb-4">Colab. Total</span>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
                                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
                                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Capacidade Dia</p>
                                  <p className="text-lg font-black text-blue-900">
-                                   {Math.round((manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal) * manualGlobalJornada * 65).toLocaleString()}
+                                   {Math.round(
+                                     (stats.envStats || []).reduce((acc, env) => {
+                                       const totalHistHC = (stats.envStats || []).reduce((sum, e) => sum + e.hcTotal, 0) || 1;
+                                       const totalHC = manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal;
+                                       const proportion = env.hcTotal / totalHistHC;
+                                       const envHC = totalHC * proportion;
+                                       return acc + (envHC * manualGlobalJornada * (env.meta || 65));
+                                     }, 0)
+                                   ).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
                                <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/50">
                                  <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Capacidade Mês</p>
                                  <p className="text-lg font-black text-red-900">
-                                   {Math.round((manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal) * manualGlobalJornada * 65 * 22).toLocaleString()}
+                                   {(stats.monthlyReal || 0).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
@@ -838,42 +852,42 @@ export default function App() {
                 ) : (
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 no-print">
-                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Diário</p>
-                          <div className="flex flex-col">
-                            <p className="text-lg sm:text-2xl font-black text-blue-900 leading-none">
+                      <div className="bg-blue-50/50 p-6 sm:p-8 rounded-2xl border border-blue-100/50">
+                          <p className="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-widest mb-2">Diário</p>
+                          <div className="flex flex-col gap-2">
+                            <p className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">
                               {stats.isDayView 
                                 ? (stats.realPecas ?? 0).toLocaleString()
                                 : Math.round(stats.realPecas / 6).toLocaleString()
                               }
                             </p>
-                            <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">
-                              Alvo: <span className="text-blue-600">{stats.isDayView 
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">
+                              Programado: <span className="text-blue-600">{stats.isDayView 
                                 ? (stats.totalPecas ?? 0).toLocaleString()
                                 : Math.round(stats.totalPecas / 6).toLocaleString()
                               }</span>
                             </p>
                           </div>
                       </div>
-                      <div className="bg-red-50/50 p-4 sm:p-5 rounded-2xl border border-red-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-1">Semanal</p>
+                      <div className="bg-red-50/50 p-6 sm:p-8 rounded-2xl border border-red-100/50">
+                          <p className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-widest mb-2">Semanal</p>
                           <div className="flex flex-col gap-2">
-                            <p className="text-lg sm:text-2xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-red-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-2xl sm:text-3xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-red-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
-                      <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Mensal</p>
+                      <div className="bg-blue-50/50 p-6 sm:p-8 rounded-2xl border border-blue-100/50">
+                          <p className="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-widest mb-2">Mensal</p>
                           <div className="flex flex-col gap-2">
-                            <p className="text-lg sm:text-2xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-blue-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-2xl sm:text-3xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-blue-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
-                      <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
-                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Anual</p>
+                      <div className="bg-slate-50/50 p-6 sm:p-8 rounded-2xl border border-slate-100/50">
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Anual</p>
                           <div className="flex flex-col gap-2">
-                            <p className="text-lg sm:text-2xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-slate-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-slate-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
                   </div>
@@ -881,10 +895,10 @@ export default function App() {
                 <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
                   <div className="relative z-10">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-12">
                        <div>
-                         <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
-                         <p className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Projeção de Performance Global</p>
+                         <h3 className="text-2xl sm:text-4xl font-black tracking-tight mb-2">Cenário Consolidado</h3>
+                         <p className="text-slate-400 text-sm sm:text-base font-bold uppercase tracking-widest">Projeção de Performance Global</p>
                        </div>
                        <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -948,78 +962,78 @@ export default function App() {
                       <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                       </span>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-5 gap-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-6 sm:mt-12 gap-2">
                         <div>
-                          <span className="text-4xl sm:text-5xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
-                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase mt-2">
+                          <span className="text-6xl sm:text-7xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
+                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">
                             {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
                         </div>
-                            <div className="text-right sm:block hidden">
+                            <div className="text-right sm:block hidden bg-slate-50 p-6 rounded-3xl border border-slate-100">
                               {selectedEnv === 'separacao' && (
-                                <div className="mb-2">
-                                  <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
-                                  <p className="text-xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
+                                <div className="mb-3">
+                                  <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
+                                  <p className="text-3xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-xs text-slate-400">PÇ/H</span></p>
                                 </div>
                               )}
                               {selectedEnv !== 'separacao' && (
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                                <p className="text-base font-bold text-slate-500 uppercase tracking-tighter mb-1">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
                               )}
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                              <p className="text-base font-bold text-slate-500 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
                             </div>
                       </div>
                     </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                        <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
-                        <div className="flex items-end justify-between mt-3">
+                      <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                        <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
+                        <div className="flex items-end justify-between mt-6 sm:mt-12">
                           <div>
-                            <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
-                            <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.CONFERENTE}</p>
+                            <span className="text-4xl sm:text-7xl font-black text-slate-800 leading-none">{stats.mediaRealConf}</span>
+                            <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">Ref: {metas.CONFERENTE}</p>
                           </div>
-                          <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-blue-600' : 'text-red-800'}`}>
+                          <span className={`text-base sm:text-xl font-bold flex items-center mb-3 px-4 py-1.5 rounded-xl ${stats.mediaRealConf >= metas.CONFERENTE ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
                             {Math.round((stats.mediaRealConf/metas.CONFERENTE)*100)}%
                           </span>
                         </div>
                       </div>
                     )}
-                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
-                      <div className="flex items-end justify-between mt-3">
+                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
+                      <div className="flex items-end justify-between mt-6 sm:mt-12">
                         <div>
-                          <span className="text-2xl sm:text-4xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
-                          <p id="ref-auxiliar-target" className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">Ref: {metas.AUXILIAR}</p>
+                          <span className="text-4xl sm:text-7xl font-black text-slate-800 leading-none">{stats.mediaRealAux}</span>
+                          <p className="text-sm sm:text-base font-black text-slate-400 uppercase mt-4">Ref: {metas.AUXILIAR}</p>
                         </div>
-                        <span className={`text-[10px] sm:text-sm font-bold flex items-center mb-1 ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-blue-600' : 'text-red-800'}`}>
+                        <span className={`text-base sm:text-xl font-bold flex items-center mb-3 px-4 py-1.5 rounded-xl ${stats.mediaRealAux >= metas.AUXILIAR ? 'text-blue-600 bg-blue-50' : 'text-red-800 bg-red-50'}`}>
                           {Math.round((stats.mediaRealAux/metas.AUXILIAR)*100)}%
                         </span>
                       </div>
                     </div>
                     <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
                       <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                        {stats.isDayView ? 'Fluxo vs Demanda' : 'Volume Real vs Demanda'}
+                        {stats.isDayView ? 'Fluxo vs Programado' : 'Real Movim. vs Programado'}
                       </span>
-                      <div className="flex flex-col mt-5">
-                        <div className="flex flex-col gap-3">
+                      <div className="flex flex-col mt-6 sm:mt-10">
+                        <div className="flex flex-col gap-4">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-slate-400 uppercase">Demanda</span>
-                            <span className="text-2xl sm:text-4xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
+                            <span className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-widest">Programado</span>
+                            <span className="text-3xl sm:text-5xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                            <span className="text-xs font-black text-blue-400 uppercase tracking-widest">Real Movim.</span>
-                            <span className={`text-2xl sm:text-4xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-5">
+                            <span className="text-sm sm:text-base font-black text-blue-500 uppercase tracking-widest">Real Movim.</span>
+                            <span className={`text-3xl sm:text-5xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
                               {(stats.realPecas ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <p className={`text-xs sm:text-sm font-black uppercase tracking-tight ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
+                        <div className="flex items-center justify-between mt-8 sm:mt-12 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100">
+                          <p className={`text-sm sm:text-lg font-black uppercase tracking-tight ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
                             {(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0)
                               ? `+${((stats.realPecas ?? 0) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'Excesso' : 'Extra'}` 
                               : `-${((stats.totalPecas ?? 0) - (stats.realPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
                           </p>
-                          <span className="text-sm font-bold text-slate-400">
+                          <span className="text-lg sm:text-xl font-bold text-slate-500 bg-white px-3 py-1 rounded-lg border border-slate-200">
                             {Math.round(((stats.realPecas ?? 0) / ((stats.totalPecas ?? 1) || 1)) * 100)}%
                           </span>
                         </div>
@@ -1593,26 +1607,26 @@ export default function App() {
                         <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">H / DIA</p>
                       </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="space-y-3 sm:space-y-4 text-center">
-                        <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Alvo {confLabel.substring(0, 4)}.</label>
+                      <div className="space-y-4 sm:space-y-6 text-center">
+                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Meta {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
                           value={metas.CONFERENTE || ''} 
                           onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
                         />
-                        <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / H</p>
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / H</p>
                       </div>
                     )}
-                    <div className="space-y-3 sm:space-y-4 text-center">
-                      <label className="text-[9px] sm:text-xs font-bold uppercase text-red-400 tracking-widest leading-none block h-3">Alvo Aux.</label>
+                    <div className="space-y-4 sm:space-y-6 text-center">
+                      <label className="text-xs sm:text-sm font-black uppercase text-red-400 tracking-widest leading-none block h-4">Meta Aux.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
                         value={metas.AUXILIAR || ''} 
                         onChange={(e) => setMetas({...metas, AUXILIAR: e.target.value === '' ? 0 : Number(e.target.value)})} 
                       />
-                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / H</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / H</p>
                     </div>
                   </div>
                 </div>
@@ -1632,15 +1646,17 @@ export default function App() {
           </footer>
 
           {/* Floating Action Button for Export */}
-          <button 
-            onClick={() => window.print()}
-            className="fixed bottom-8 right-8 z-[60] bg-blue-900 hover:bg-blue-800 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_20px_50px_rgba(30,58,138,0.3)] hover:shadow-[0_20px_50px_rgba(30,58,138,0.5)] transition-all duration-300 transform hover:scale-110 active:scale-90 no-print group"
-          >
-            <Printer size={24} className="group-hover:rotate-12 transition-transform" />
-            <span className="absolute right-20 bg-[#1E293B] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-xl border border-slate-700">
-              Exportar Relatório
-            </span>
-          </button>
+          {selectedEnv && (
+            <button 
+              onClick={() => window.print()}
+              className="fixed bottom-8 right-8 z-[60] bg-blue-900 hover:bg-blue-800 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_20px_50px_rgba(30,58,138,0.3)] hover:shadow-[0_20px_50px_rgba(30,58,138,0.5)] transition-all duration-300 transform hover:scale-110 active:scale-90 no-print group"
+            >
+              <Printer size={24} className="group-hover:rotate-12 transition-transform" />
+              <span className="absolute right-20 bg-[#1E293B] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-xl border border-slate-700">
+                Exportar Relatório
+              </span>
+            </button>
+          )}
         </main>
       </div>
     </>
