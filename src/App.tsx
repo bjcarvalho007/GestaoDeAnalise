@@ -474,8 +474,8 @@ export default function App() {
                     <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-white font-black tracking-tight uppercase text-lg sm:text-xl leading-none">Gestão integrada</span>
-                    <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest mt-1 font-mono">
+                    <span className="text-white font-black tracking-tight uppercase text-xl sm:text-2xl leading-none">Gestão integrada</span>
+                    <span className="text-xs font-black text-blue-300 uppercase tracking-widest mt-1.5 font-mono">
                       {selectedEnv === 'geral' ? 'Módulo: VISÃO GLOBAL' : `Ambiente: ${selectedEnv?.toUpperCase()}`}
                     </span>
                   </div>
@@ -563,19 +563,19 @@ export default function App() {
             {/* Context Header */}
             <div className="mb-6 sm:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print border-b border-slate-200 pb-6 sm:pb-8">
               <div className="w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-6 sm:w-10 bg-blue-900 rounded-full" />
-                  <span className="text-[10px] sm:text-sm font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em]">
-                    {selectedEnv === 'geral' ? 'Visão Consolidada' : `Ambiente ${selectedEnv}`}
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
-                  {selectedEnv === 'geral' ? 'Control Tower Dashboard' : (
-                    activeTab === 'dashboard' ? 'Performance' : 
-                    activeTab === 'input' ? 'Operações' : 
-                    activeTab === 'meta' ? 'Parametrização' : 'Simular'
-                  )}
-                </h1>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-1.5 w-10 sm:w-14 bg-blue-900 rounded-full" />
+                    <span className="text-xs sm:text-base font-black text-slate-400 uppercase tracking-[0.3em]">
+                      {selectedEnv === 'geral' ? 'Visão Consolidada' : `Ambiente ${selectedEnv}`}
+                    </span>
+                  </div>
+                  <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
+                    {selectedEnv === 'geral' ? 'Control Tower Dashboard' : (
+                      activeTab === 'dashboard' ? 'Performance' : 
+                      activeTab === 'input' ? 'Operações' : 
+                      activeTab === 'meta' ? 'Parametrização' : 'Simular'
+                    )}
+                  </h1>
               </div>
               <div className="flex items-center gap-3 no-print bg-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
                 <select 
@@ -658,20 +658,22 @@ export default function App() {
                   /* GESTÃO GERAL VIEW */
                   <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Fluxo Consolidado</p>
-                          <div className="flex flex-col">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
-                              <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">Real PÇS</span>
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Fluxo Consolidado</p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-baseline gap-3">
+                              <span className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase">Real PÇS</span>
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
-                              Programado: {stats.totalPecas?.toLocaleString()}
-                            </p>
+                            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 w-fit">
+                              <p className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-tight">
+                                Programado: <span className="text-blue-900 ml-1">{stats.totalPecas?.toLocaleString()}</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
+                        <div className="mt-8 sm:mt-12 flex items-center justify-between pt-6 sm:pt-8 border-t border-slate-100">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 rounded-full bg-blue-500" />
                              <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Total Operação</span>
@@ -680,41 +682,41 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Produtividade Global</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className={`text-4xl sm:text-5xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Produtividade Global</p>
+                          <div className="flex items-baseline gap-3">
+                            <span className={`text-5xl sm:text-6xl font-black tracking-tighter ${stats.productivity >= 65 ? 'text-blue-900' : 'text-red-900'}`}>
                               {stats.productivity}
                             </span>
-                            <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇ / H</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase">PÇ / H</span>
                           </div>
                         </div>
-                        <div className="mt-6 sm:mt-8 flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100">
+                        <div className="mt-8 sm:mt-12 flex items-center justify-between pt-6 sm:pt-8 border-t border-slate-100">
                           <div className="flex items-center gap-2">
-                             <div className={`w-2 h-2 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
-                             <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
+                             <div className={`w-3 h-3 rounded-full ${stats.productivity >= 65 ? 'bg-blue-600' : 'bg-red-700'}`} />
+                             <span className="text-xs font-black text-slate-500 uppercase tracking-tight">Meta: 65,00 PÇ / H</span>
                           </div>
-                          {stats.productivity >= 65 ? <CheckCircle2 size={22} className="text-blue-600" /> : <AlertTriangle size={22} className="text-red-700" />}
+                          {stats.productivity >= 65 ? <CheckCircle2 size={30} className="text-blue-600" /> : <AlertTriangle size={30} className="text-red-700" />}
                         </div>
                       </div>
 
-                      <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
+                      <div className="bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-xl transition-all duration-500">
                         <div>
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Efetivo Consolidado</p>
-                          <div className="flex flex-col gap-4 sm:gap-5">
-                            <div className="flex items-center gap-3 sm:gap-4">
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-6">Efetivo Consolidado</p>
+                          <div className="flex flex-col gap-6 sm:gap-8">
+                            <div className="flex items-center gap-4 sm:gap-6">
                               <div className="flex flex-col">
-                                <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase mb-1 sm:mb-1.5 tracking-tighter">Equipe (Editar)</span>
+                                <span className="text-xs font-black text-slate-400 uppercase mb-2 tracking-tighter">Equipe (Editar)</span>
                                 <input 
                                   type="number"
                                   value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
                                   onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
-                                  className="w-20 sm:w-28 text-2xl sm:text-4xl font-black text-blue-900 bg-slate-50 rounded-xl px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
+                                  className="w-24 sm:w-36 text-4xl sm:text-5xl font-black text-blue-900 bg-slate-50 rounded-xl px-4 py-2 border border-slate-100 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"
                                   placeholder="0"
                                 />
                               </div>
-                              <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase self-end mb-2 sm:mb-3">Colab.</span>
+                              <span className="text-sm font-bold text-slate-400 uppercase self-end mb-3">Colab. Total</span>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
@@ -783,12 +785,12 @@ export default function App() {
                                <div className="flex justify-between items-end mb-2">
                                  <div>
                                    <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest">{env.env === 'recebimento' ? 'Recebimento' : 'Separação'}</p>
-                                   <div className="flex flex-col">
-                                     <p className="text-lg sm:text-xl font-black text-slate-800 leading-none">
-                                       {env.totalReal.toLocaleString()} <span className="text-[10px] font-bold text-slate-400 uppercase">Real</span>
+                                   <div className="flex flex-col gap-1">
+                                     <p className="text-xl sm:text-2xl font-black text-slate-800 leading-none">
+                                       {env.totalReal.toLocaleString()} <span className="text-xs font-bold text-slate-500 uppercase">Real</span>
                                      </p>
-                                     <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
-                                       Programado: {env.totalPecas.toLocaleString()}
+                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                       Programado: <span className="text-blue-600">{env.totalPecas.toLocaleString()}</span>
                                      </p>
                                    </div>
                                  </div>
@@ -845,33 +847,33 @@ export default function App() {
                                 : Math.round(stats.realPecas / 6).toLocaleString()
                               }
                             </p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
-                              Alvo: {stats.isDayView 
+                            <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">
+                              Alvo: <span className="text-blue-600">{stats.isDayView 
                                 ? (stats.totalPecas ?? 0).toLocaleString()
                                 : Math.round(stats.totalPecas / 6).toLocaleString()
-                              }
+                              }</span>
                             </p>
                           </div>
                       </div>
                       <div className="bg-red-50/50 p-4 sm:p-5 rounded-2xl border border-red-100/50">
                           <p className="text-[9px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-1">Semanal</p>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-2">
                             <p className="text-lg sm:text-2xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-red-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
                       <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
                           <p className="text-[9px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Mensal</p>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-2">
                             <p className="text-lg sm:text-2xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-blue-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
                       <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
                           <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Anual</p>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-2">
                             <p className="text-lg sm:text-2xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Alvo: {data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</p>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Alvo: <span className="text-slate-700">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
                           </div>
                       </div>
                   </div>
@@ -942,28 +944,28 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
-                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                       </span>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-3 gap-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-5 gap-2">
                         <div>
-                          <span className="text-2xl sm:text-4xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
-                          <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase mt-1">
+                          <span className="text-4xl sm:text-5xl font-black text-blue-900 leading-none">{stats.mediaHeadcountTotal}</span>
+                          <p className="text-xs sm:text-sm font-black text-slate-400 uppercase mt-2">
                             {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
                         </div>
                             <div className="text-right sm:block hidden">
                               {selectedEnv === 'separacao' && (
                                 <div className="mb-2">
-                                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
-                                  <p className="text-lg font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[9px] text-slate-400">PÇ/H</span></p>
+                                  <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
+                                  <p className="text-xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
                                 </div>
                               )}
                               {selectedEnv !== 'separacao' && (
-                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
                               )}
-                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
                             </div>
                       </div>
                     </div>
@@ -993,31 +995,31 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
-                      <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                    <div className="bg-white p-6 sm:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <span className="text-xs sm:text-base font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Fluxo vs Demanda' : 'Volume Real vs Demanda'}
                       </span>
-                      <div className="flex flex-col mt-3">
-                        <div className="flex flex-col gap-2">
+                      <div className="flex flex-col mt-5">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Demanda</span>
-                            <span className="text-xl sm:text-2xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
+                            <span className="text-xs font-black text-slate-400 uppercase">Demanda</span>
+                            <span className="text-2xl sm:text-4xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Real Movim.</span>
-                            <span className={`text-xl sm:text-2xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <span className="text-xs font-black text-blue-400 uppercase tracking-widest">Real Movim.</span>
+                            <span className={`text-2xl sm:text-4xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
                               {(stats.realPecas ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-tighter ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
+                        <div className="flex items-center justify-between mt-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <p className={`text-xs sm:text-sm font-black uppercase tracking-tight ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
                             {(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0)
                               ? `+${((stats.realPecas ?? 0) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'Excesso' : 'Extra'}` 
                               : `-${((stats.totalPecas ?? 0) - (stats.realPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
                           </p>
-                          <span className="text-[10px] font-bold text-slate-400">
+                          <span className="text-sm font-bold text-slate-400">
                             {Math.round(((stats.realPecas ?? 0) / ((stats.totalPecas ?? 1) || 1)) * 100)}%
                           </span>
                         </div>
@@ -1569,27 +1571,27 @@ export default function App() {
                     <p className="text-slate-500 text-[9px] sm:text-xs font-bold mt-2 uppercase tracking-widest">Indicadores de Produtividade</p>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
-                    <div className="space-y-3 sm:space-y-4 text-center">
-                      <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Meta Vol.</label>
-                      <input 
-                        type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
-                        value={metas.VOLUME || ''} 
-                        onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                      />
-                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">PÇ / DIA</p>
-                    </div>
-                    <div className="space-y-3 sm:space-y-4 text-center">
-                      <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Jornada</label>
-                      <input 
-                        type="number" 
-                        step="0.5"
-                        className="w-full bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl text-xl sm:text-4xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
-                        value={metas.JORNADA || ''} 
-                        onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                      />
-                      <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">H / DIA</p>
-                    </div>
+                      <div className="space-y-4 sm:space-y-6 text-center">
+                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Meta Vol.</label>
+                        <input 
+                          type="number" 
+                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          value={metas.VOLUME || ''} 
+                          onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                        />
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">PÇ / DIA</p>
+                      </div>
+                      <div className="space-y-4 sm:space-y-6 text-center">
+                        <label className="text-xs sm:text-sm font-black uppercase text-blue-400 tracking-widest leading-none block h-4">Jornada</label>
+                        <input 
+                          type="number" 
+                          step="0.5"
+                          className="w-full bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-xl sm:rounded-2xl text-2xl sm:text-5xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          value={metas.JORNADA || ''} 
+                          onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                        />
+                        <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">H / DIA</p>
+                      </div>
                     {selectedEnv !== 'separacao' && (
                       <div className="space-y-3 sm:space-y-4 text-center">
                         <label className="text-[9px] sm:text-xs font-bold uppercase text-blue-400 tracking-widest leading-none block h-3">Alvo {confLabel.substring(0, 4)}.</label>
