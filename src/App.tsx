@@ -621,9 +621,16 @@ export default function App() {
               </div>
             </div>
 
+            {/* PRINT ONLY FOOTER FIXED - trick for some browsers but let's use a simpler approach */}
+            <div className="hidden print:block fixed bottom-0 left-0 right-0 py-4 border-t border-slate-200 text-center">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                 Gestão Integrada Logística © 2026 - Relatório Gerencial Confidencial
+               </p>
+            </div>
+
             {/* --- DASHBOARD --- */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 print:space-y-6">
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 print:space-y-8 print:animate-none">
                 {/* Date Filter Bar */}
                 <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-fit overflow-x-auto">
                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100 flex-shrink-0">
@@ -662,9 +669,9 @@ export default function App() {
 
                 {selectedEnv === 'geral' ? (
                   /* GESTÃO GERAL VIEW */
-                  <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
+                  <div className="space-y-8 print:space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500 print:shadow-none print:break-inside-avoid print:border-slate-300">
                         <div>
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Fluxo Consolidado</p>
                           <div className="flex flex-col gap-1.5">
@@ -688,7 +695,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500 print:shadow-none print:break-inside-avoid print:border-slate-300">
                         <div>
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Produtividade Global</p>
                           <div className="flex items-baseline gap-2.5">
@@ -707,7 +714,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500">
+                      <div className="bg-white p-5 sm:p-6 rounded-[1.2rem] sm:rounded-[1.5rem] shadow-sm border border-slate-200 flex flex-col justify-between group hover:shadow-lg transition-all duration-500 print:shadow-none print:break-inside-avoid print:border-slate-300">
                         <div>
                           <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-4">Efetivo Consolidado</p>
                           <div className="flex flex-col gap-3.5 sm:gap-6">
@@ -892,21 +899,21 @@ export default function App() {
                       </div>
                   </div>
 
-                <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl border border-slate-800 print:bg-white print:text-slate-900 print:border-slate-300 print:shadow-none print:break-inside-avoid">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none print:hidden" />
                   <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
                        <div>
                          <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
-                         <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest">Projeção de Performance Global</p>
+                         <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest print:text-slate-500">Projeção de Performance Global</p>
                        </div>
-                       <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Live Dashboard</span>
+                       <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3 print:bg-slate-50 print:border-slate-200">
+                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse print:animate-none" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 print:text-slate-500">Live Dashboard</span>
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3 print:gap-2">
                        {['dia', 'mes', 'ano'].map((period) => {
                          const h = stats.horizons?.[period as keyof typeof stats.horizons];
                          if (!h) return null;
@@ -917,21 +924,21 @@ export default function App() {
                          const diff = real - demand;
 
                          return (
-                           <div key={period} className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:bg-white/[0.07] transition-all group">
+                           <div key={period} className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:bg-white/[0.07] transition-all group print:bg-white print:border-slate-200 print:p-3">
                              <div className="flex items-center justify-between mb-4">
-                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{label}</span>
-                                <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? 'bg-blue-600/20 text-blue-400' : 'bg-red-800/20 text-red-500'}`}>
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest print:text-blue-900">{label}</span>
+                                <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isOk ? 'bg-blue-600/20 text-blue-400 print:bg-blue-50 print:text-blue-800' : 'bg-red-800/20 text-red-500 print:bg-red-50 print:text-red-900'}`}>
                                   {isOk ? 'Meta OK' : 'Abaixo'}
                                 </div>
                              </div>
-                             <div className="space-y-4">
+                             <div className="space-y-4 print:space-y-2">
                                <div>
                                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Demanda Sugerida</p>
-                                 <p className="text-2xl font-black">{demand.toLocaleString()}</p>
+                                 <p className="text-2xl font-black print:text-lg">{demand.toLocaleString()}</p>
                                </div>
-                               <div className="pt-3 border-t border-white/5">
+                               <div className="pt-3 border-t border-white/5 print:border-slate-100">
                                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Realizado / Movim.</p>
-                                 <p className={`text-2xl font-black ${isOk ? 'text-blue-400' : 'text-red-500'}`}>
+                                 <p className={`text-2xl font-black print:text-lg ${isOk ? 'text-blue-400 print:text-blue-900' : 'text-red-500 print:text-red-800'}`}>
                                    {real.toLocaleString()}
                                  </p>
                                </div>
@@ -939,7 +946,7 @@ export default function App() {
                                   <span className={`text-[10px] font-black uppercase ${isOk ? 'text-blue-500' : 'text-red-600'}`}>
                                     {diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()}
                                   </span>
-                                  <div className="h-1 flex-1 mx-3 bg-white/5 rounded-full overflow-hidden">
+                                  <div className="h-1 flex-1 mx-3 bg-white/5 rounded-full overflow-hidden print:bg-slate-100">
                                      <div 
                                        className={`h-full rounded-full transition-all duration-1000 ${isOk ? 'bg-blue-600' : 'bg-red-800'}`} 
                                        style={{ width: `${Math.min(100, (real / (demand || 1)) * 100)}%` }}
@@ -958,7 +965,7 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:grid-cols-4">
-                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none print:border-slate-300 print:break-inside-avoid transition-all hover:shadow-md">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Equipe Real' : stats.isYearView ? 'Média Anual' : stats.isMonthView ? 'Média Mensal' : 'Resumo Equipe'}
                       </span>
@@ -969,7 +976,7 @@ export default function App() {
                             {stats.isDayView ? 'H. Real' : 'H. Médio'}
                           </p>
                         </div>
-                            <div className="text-right sm:block hidden bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div className="text-right sm:block hidden bg-slate-50 p-4 rounded-2xl border border-slate-100 print:p-2 print:border-slate-200">
                               {selectedEnv === 'separacao' && (
                                 <div className="mb-2">
                                   <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
@@ -984,7 +991,7 @@ export default function App() {
                       </div>
                     </div>
                     {selectedEnv !== 'separacao' && (
-                      <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                      <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none print:border-slate-300 print:break-inside-avoid transition-all hover:shadow-md">
                         <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. {confLabel}</span>
                         <div className="flex items-end justify-between mt-4 sm:mt-8">
                           <div>
@@ -997,7 +1004,7 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none print:border-slate-300 print:break-inside-avoid transition-all hover:shadow-md">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">Prod. Auxiliar</span>
                       <div className="flex items-end justify-between mt-4 sm:mt-8">
                         <div>
@@ -1009,7 +1016,7 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none transition-all hover:shadow-md">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none print:border-slate-300 print:break-inside-avoid transition-all hover:shadow-md">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">
                         {stats.isDayView ? 'Fluxo vs Programado' : 'Real Movim. vs Programado'}
                       </span>
@@ -1017,23 +1024,23 @@ export default function App() {
                         <div className="flex flex-col gap-3">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Programado</span>
-                            <span className="text-2xl sm:text-4xl font-black text-slate-800">{(stats.totalPecas ?? 0).toLocaleString()}</span>
+                            <span className="text-2xl sm:text-4xl font-black text-slate-800 print:text-2xl">{(stats.totalPecas ?? 0).toLocaleString()}</span>
                           </div>
-                          <div className="flex items-center justify-between border-t border-slate-100 pt-5">
-                            <span className="text-sm sm:text-base font-black text-blue-500 uppercase tracking-widest">Real Movim.</span>
-                            <span className={`text-3xl sm:text-5xl font-black ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-5 print:pt-2">
+                            <span className="text-sm sm:text-base font-black text-blue-500 uppercase tracking-widest print:text-xs">Real Movim.</span>
+                            <span className={`text-3xl sm:text-5xl font-black print:text-3xl ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-700' : 'text-red-900'}`}>
                               {(stats.realPecas ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-8 sm:mt-12 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100">
-                          <p className={`text-sm sm:text-lg font-black uppercase tracking-tight ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
+                        <div className="flex items-center justify-between mt-8 sm:mt-12 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 print:mt-4 print:p-3 print:border-slate-200">
+                          <p className={`text-sm sm:text-lg font-black uppercase tracking-tight print:text-xs ${(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0) ? 'text-blue-600' : 'text-red-800'}`}>
                             {(stats.realPecas ?? 0) >= (stats.totalPecas ?? 0)
                               ? `+${((stats.realPecas ?? 0) - (stats.totalPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'Excesso' : 'Extra'}` 
                               : `-${((stats.totalPecas ?? 0) - (stats.realPecas ?? 0)).toLocaleString()} ${selectedEnv === 'recebimento' ? 'NO-SHOW' : 'Pendente'}`}
                           </p>
-                          <span className="text-lg sm:text-xl font-bold text-slate-500 bg-white px-3 py-1 rounded-lg border border-slate-200">
+                          <span className="text-lg sm:text-xl font-bold text-slate-500 bg-white px-3 py-1 rounded-lg border border-slate-200 print:text-sm">
                             {Math.round(((stats.realPecas ?? 0) / ((stats.totalPecas ?? 1) || 1)) * 100)}%
                           </span>
                         </div>
@@ -1203,7 +1210,7 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-5 duration-300 print:space-y-0 print:animate-none">
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-5 duration-300 print:space-y-6 print:animate-none">
                 <div className="hidden md:flex items-center gap-6 no-print">
                   <div className="bg-white p-7 rounded-2xl border border-slate-200 flex items-center gap-6 shadow-sm">
                     <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center text-blue-900"><Layers size={24}/></div>
@@ -1252,7 +1259,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2 print:gap-6 print:break-after-auto">
                   {filteredOperationalData.map(item => {
                     const localJornada = Number(item.jornada) || metas.JORNADA || 9;
                     const localPecas = Number(item.pecas) || 0;
@@ -1276,7 +1283,7 @@ export default function App() {
                     const allOk = volumeOk && realOk && prodCOk && (selectedEnv === 'separacao' ? true : prodAOk);
 
                     return (
-                      <div id={`card-${item.id}`} key={item.id} className={`bg-white rounded-3xl border overflow-hidden shadow-sm transition-all duration-300 print:shadow-none print:border-slate-200 ${
+                      <div id={`card-${item.id}`} key={item.id} className={`bg-white rounded-3xl border overflow-hidden shadow-sm transition-all duration-300 print:shadow-none print:border-slate-300 print:break-inside-avoid ${
                         hasData 
                         ? (allOk ? 'border-blue-200 ring-1 ring-blue-50' : 'border-red-200 ring-1 ring-red-50') 
                         : 'border-slate-200 hover:border-blue-200'

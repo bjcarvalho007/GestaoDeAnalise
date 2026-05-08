@@ -28,8 +28,15 @@
   }
 
   @media print {
+    @page {
+      margin: 1.5cm;
+      size: auto;
+    }
+
     body {
       background: white !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .print-container {
@@ -41,10 +48,19 @@
 
     .print-break-inside-avoid {
       break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .print-break-before-page {
+      break-before: page;
     }
 
     .print-grid-cols-1 {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+
+    .print-grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
     
     .print-m-0 {
@@ -61,6 +77,17 @@
 
     .print-border {
       border: 1px solid #e2e8f0 !important;
+    }
+
+    /* Force visibility of certain elements that might be hidden by default in some print engines */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Links and other interactive elements */
+    a[href]:after {
+      content: none !important;
     }
   }
 }
