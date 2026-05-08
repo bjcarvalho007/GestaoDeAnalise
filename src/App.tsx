@@ -275,6 +275,7 @@ export default function App() {
         return {
           env,
           totalPecas: totalPecas,
+          totalReal: totalReal,
           hcTotal,
           ativos: ativos.length
         };
@@ -663,10 +664,10 @@ export default function App() {
                           <div className="flex flex-col">
                             <div className="flex items-baseline gap-2">
                               <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter">{stats.realPecas?.toLocaleString()}</span>
-                              <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">PÇS</span>
+                              <span className="text-[10px] sm:text-sm font-bold text-slate-400 uppercase">Real PÇS</span>
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
-                              Alvo: {stats.totalPecas?.toLocaleString()}
+                              Programado: {stats.totalPecas?.toLocaleString()}
                             </p>
                           </div>
                         </div>
@@ -782,7 +783,14 @@ export default function App() {
                                <div className="flex justify-between items-end mb-2">
                                  <div>
                                    <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest">{env.env === 'recebimento' ? 'Recebimento' : 'Separação'}</p>
-                                   <p className="text-lg sm:text-xl font-black text-slate-800">{env.totalPecas.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">PÇS</span></p>
+                                   <div className="flex flex-col">
+                                     <p className="text-lg sm:text-xl font-black text-slate-800 leading-none">
+                                       {env.totalReal.toLocaleString()} <span className="text-[10px] font-bold text-slate-400 uppercase">Real</span>
+                                     </p>
+                                     <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                       Programado: {env.totalPecas.toLocaleString()}
+                                     </p>
+                                   </div>
                                  </div>
                                  <div className="text-right">
                                    <p className="text-[9px] sm:text-[10px] font-black text-blue-400 uppercase tracking-tighter">Eq. Média: {env.hcTotal}</p>
