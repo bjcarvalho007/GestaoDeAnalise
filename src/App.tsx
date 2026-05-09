@@ -1321,12 +1321,18 @@ export default function App() {
                     
                     const prodC = calculateProdReal(localPecas, Number(item.conferentes) || 0, localJornada);
                     const prodA = calculateProdReal(localPecas, Number(item.auxiliares) || 0, localJornada);
+                    
+                    const prodCActual = calculateProdReal(localRealVolume, Number(item.conferentes) || 0, localJornada);
+                    const prodAActual = calculateProdReal(localRealVolume, Number(item.auxiliares) || 0, localJornada);
+
                     const hasData = localPecas > 0;
                     
                     const volumeOk = localPecas >= (metas.VOLUME || 6000);
                     const realOk = (Number(item.real) || 0) >= localPecas;
                     const prodCOk = prodC >= (metas.CONFERENTE || 220);
                     const prodAOk = prodA >= (metas.AUXILIAR || 110);
+                    const prodCActualOk = prodCActual >= (metas.CONFERENTE || 220);
+                    const prodAActualOk = prodAActual >= (metas.AUXILIAR || 110);
                     const staffingCOk = (Number(item.conferentes) || 0) >= sugC;
                     const staffingAOk = selectedEnv === 'separacao' ? true : (Number(item.auxiliares) || 0) >= sugA;
                     const diffC = (Number(item.conferentes) || 0) - sugC;
@@ -1491,18 +1497,33 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
+                          <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <div className="grid grid-cols-2 gap-2">
                               {selectedEnv !== 'separacao' && (
                                 <div className="text-center">
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
-                                  <p id={`prod-real-c-${item.id}`} className={`text-xl font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>{prodC} <span className="text-xs text-slate-400">/ {metas.CONFERENTE}</span></p>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meta {confLabel.substring(0, 4)}. (PÇ/H)</p>
+                                  <p className={`text-xl font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>{prodC} <span className="text-xs text-slate-400">/ {metas.CONFERENTE}</span></p>
                                 </div>
                               )}
-                              <div className="text-center border-l border-slate-100">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
-                                <p id={`prod-real-a-${item.id}`} className={`text-xl font-black ${prodAOk ? 'text-blue-900' : 'text-red-900'}`}>{prodA} <span className="text-xs text-slate-400">/ {metas.AUXILIAR}</span></p>
+                              <div className={`text-center ${selectedEnv !== 'separacao' ? 'border-l border-slate-100' : ''}`}>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Meta Aux. (PÇ/H)</p>
+                                <p className={`text-xl font-black ${prodAOk ? 'text-blue-900' : 'text-red-900'}`}>{prodA} <span className="text-xs text-slate-400">/ {metas.AUXILIAR}</span></p>
                               </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                              {selectedEnv !== 'separacao' && (
+                                <div className="text-center">
+                                  <p className="text-[10px] font-black text-blue-900/60 uppercase tracking-tighter">Real {confLabel.substring(0, 4)}. (PÇ/H)</p>
+                                  <p className={`text-xl font-black ${prodCActualOk ? 'text-blue-900' : 'text-red-900'}`}>{prodCActual} <span className="text-xs text-blue-400/60">PÇ/H</span></p>
+                                </div>
+                              )}
+                              <div className={`text-center ${selectedEnv !== 'separacao' ? 'border-l border-blue-100' : ''}`}>
+                                <p className="text-[10px] font-black text-blue-900/60 uppercase tracking-tighter">Real Aux. (PÇ/H)</p>
+                                <p className={`text-xl font-black ${prodAActualOk ? 'text-blue-900' : 'text-red-900'}`}>{prodAActual} <span className="text-xs text-blue-400/60">PÇ/H</span></p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
