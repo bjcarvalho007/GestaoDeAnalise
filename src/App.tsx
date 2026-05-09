@@ -59,16 +59,29 @@ interface Metas {
 
 // --- Utils ---
 const generateWeeklyStructure = (): DayData[] => {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 (Sun) to 6 (Sat)
+  // Find Monday of the current week
+  const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+
   const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-  return dias.map((dia, index) => ({
-    id: `fixo-${index}`,
-    dia: dia,
-    pecas: 0,
-    conferentes: 0,
-    auxiliares: 0,
-    jornada: 9,
-    real: 0,
-  }));
+  return dias.map((dia, index) => {
+    const currentDay = new Date(monday);
+    currentDay.setDate(monday.getDate() + index);
+    const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    
+    return {
+      id: `fixo-${index}`,
+      dia: `${dia} (${dayStr})`,
+      pecas: 0,
+      conferentes: 0,
+      auxiliares: 0,
+      jornada: 9,
+      real: 0,
+    };
+  });
 };
 
 const calculateProdReal = (pecas: number, qtdPessoas: number, jornada: number) => {
@@ -106,6 +119,13 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  // Helper to get current day ID (0-5 for Seg-Sab)
+  const getCurrentDayId = () => {
+    const day = new Date().getDay(); // 0-6 (Sun-Sat)
+    if (day === 0) return 'semana'; // Default to week view on Sunday
+    return `fixo-${day - 1}`;
+  };
+
   const [calcData, setCalcData] = useState({ 
     pecas: 6000, 
     jornada: 9,
@@ -115,7 +135,7 @@ export default function App() {
     aux: 7
   });
   const [filterMode, setFilterMode] = useState<'todos' | 'ok' | 'pendente'>('todos');
-  const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | string>('semana');
+  const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | 'ano' | string>(getCurrentDayId());
 
   useEffect(() => {
     localStorage.setItem('logistics_manual_global_hc', JSON.stringify(manualGlobalHC));
@@ -134,12 +154,18 @@ export default function App() {
       
       environments.forEach(env => {
         const metasKey = `logistics_${env}_metas_v4`;
-        const dataKey = `logistics_${env}_data_v4`;
+        // Make data specific to month and year
+        const dataKey = `logistics_${env}_data_v4_${selectedYear}_${selectedMonth}`;
+        
         const savedMetas = localStorage.getItem(metasKey);
         const savedData = localStorage.getItem(dataKey);
         
+        // Fallback to legacy key if monthly key doesn't exist yet (for migration)
+        const legacyDataKey = `logistics_${env}_data_v4`;
+        const legacyData = !savedData ? localStorage.getItem(legacyDataKey) : null;
+        
         combined[env] = {
-          atual: savedData ? JSON.parse(savedData).atual : generateWeeklyStructure(),
+          atual: savedData ? JSON.parse(savedData).atual : (legacyData ? JSON.parse(legacyData).atual : generateWeeklyStructure()),
           metas: savedMetas ? JSON.parse(savedMetas) : { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 }
         };
       });
@@ -147,12 +173,7 @@ export default function App() {
       return combined;
     };
 
-    if (!selectedEnv) {
-      syncAllData();
-      return;
-    }
-
-    if (selectedEnv === 'geral') {
+    if (!selectedEnv || selectedEnv === 'geral') {
       syncAllData();
       return;
     }
@@ -165,7 +186,7 @@ export default function App() {
       setMetas(envData.metas);
       setData({ atual: envData.atual });
     }
-  }, [selectedEnv]);
+  }, [selectedEnv, selectedMonth, selectedYear]);
 
   useEffect(() => {
     // Splash screen animation delay
@@ -174,10 +195,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (selectedEnv) {
-      localStorage.setItem(`logistics_${selectedEnv}_data_v4`, JSON.stringify(data));
+    if (selectedEnv && selectedEnv !== 'geral') {
+      localStorage.setItem(`logistics_${selectedEnv}_data_v4_${selectedYear}_${selectedMonth}`, JSON.stringify(data));
     }
-  }, [data, selectedEnv]);
+  }, [data, selectedEnv, selectedMonth, selectedYear]);
 
   useEffect(() => {
     if (selectedEnv) {
@@ -913,9 +934,32 @@ export default function App() {
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none print:hidden" />
                   <div className="relative z-10">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
-                       <div>
-                         <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
-                         <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest print:text-slate-500">Projeção de Performance Global</p>
+                       <div className="flex flex-col sm:flex-row sm:items-baseline gap-4">
+                         <div>
+                           <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
+                           <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest print:text-slate-500">Projeção de Performance Global</p>
+                         </div>
+                         <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10 no-print">
+                            <select 
+                              className="bg-transparent text-[10px] font-black uppercase text-slate-300 outline-none cursor-pointer"
+                              value={selectedMonth}
+                              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                            >
+                              {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, i) => (
+                                <option key={m} value={i} className="bg-slate-900">{m}</option>
+                              ))}
+                            </select>
+                            <span className="text-white/20">|</span>
+                            <select 
+                              className="bg-transparent text-[10px] font-black uppercase text-slate-300 outline-none cursor-pointer"
+                              value={selectedYear}
+                              onChange={(e) => setSelectedYear(Number(e.target.value))}
+                            >
+                              {[2024, 2025, 2026, 2027].map(y => (
+                                <option key={y} value={y} className="bg-slate-900">{y}</option>
+                              ))}
+                            </select>
+                         </div>
                        </div>
                        <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3 print:bg-slate-50 print:border-slate-200">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse print:animate-none" />
@@ -1209,8 +1253,12 @@ export default function App() {
             {/* --- GESTÃO OPERACIONAL --- */}
             {activeTab === 'input' && (
               <>
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4 no-print mb-8">
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-4 no-print mb-8">
                   <div className="flex items-center gap-3 bg-slate-100 p-2 rounded-2xl w-fit">
+                    <div className="flex items-center px-3 py-2 bg-blue-900 rounded-xl text-white mr-1 shadow-sm">
+                      <Calendar size={14} className="mr-2" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Base de Dados</span>
+                    </div>
                     <select 
                       className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
                       value={selectedMonth}
@@ -1231,7 +1279,7 @@ export default function App() {
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
+                  <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
                     <button 
                       onClick={() => setDashboardDateFilter('semana')}
                       className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
@@ -1250,6 +1298,22 @@ export default function App() {
                     >
                       Ano
                     </button>
+                    <div className="w-[1px] h-6 bg-slate-100 mx-1" />
+                    <select
+                      className={`bg-transparent text-[10px] font-black uppercase tracking-widest outline-none px-2 py-2 rounded-lg transition-all ${!['semana', 'mes', 'ano'].includes(dashboardDateFilter) ? 'text-blue-900 bg-blue-50' : 'text-slate-400'}`}
+                      value={!['semana', 'mes', 'ano'].includes(dashboardDateFilter) ? dashboardDateFilter : ""}
+                      onChange={(e) => setDashboardDateFilter(e.target.value)}
+                    >
+                      <option value="" disabled>Selecione o Dia</option>
+                      {data.atual.map((dia) => {
+                        const isToday = dia.id === getCurrentDayId();
+                        return (
+                          <option key={dia.id} value={dia.id}>
+                            {dia.dia} {isToday ? ' (HOJE)' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
 
