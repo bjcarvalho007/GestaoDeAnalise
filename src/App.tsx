@@ -58,13 +58,22 @@ interface Metas {
 }
 
 // --- Utils ---
-const generateWeeklyStructure = (): DayData[] => {
+const generateWeeklyStructure = (month?: number, year?: number): DayData[] => {
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 (Sun) to 6 (Sat)
-  // Find Monday of the current week
+  const targetMonth = month !== undefined ? month : now.getMonth();
+  const targetYear = year !== undefined ? year : now.getFullYear();
+  
+  // Create a date for the first day of that period
+  // We'll use the current day if it's the current month/year, 
+  // or the 1st of the month if it's a different month
+  const isCurrentMonth = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  const referenceDate = isCurrentMonth ? now : new Date(targetYear, targetMonth, 1);
+  
+  const dayOfWeek = referenceDate.getDay(); // 0 (Sun) to 6 (Sat)
+  // Find Monday of that week
   const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
+  const monday = new Date(referenceDate);
+  monday.setDate(referenceDate.getDate() + diffToMonday);
 
   const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   return dias.map((dia, index) => {
@@ -118,6 +127,7 @@ export default function App() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Helper to get current day ID (0-5 for Seg-Sab)
   const getCurrentDayId = () => {
@@ -147,6 +157,7 @@ export default function App() {
 
   // --- Data Sync ---
   useEffect(() => {
+    setIsLoaded(false);
     // Global sync function to fetch all data from localStorage
     const syncAllData = () => {
       const environments: ('recebimento' | 'separacao')[] = ['recebimento', 'separacao'];
@@ -165,7 +176,7 @@ export default function App() {
         const legacyData = !savedData ? localStorage.getItem(legacyDataKey) : null;
         
         combined[env] = {
-          atual: savedData ? JSON.parse(savedData).atual : (legacyData ? JSON.parse(legacyData).atual : generateWeeklyStructure()),
+          atual: savedData ? JSON.parse(savedData).atual : (legacyData ? JSON.parse(legacyData).atual : generateWeeklyStructure(selectedMonth, selectedYear)),
           metas: savedMetas ? JSON.parse(savedMetas) : { CONFERENTE: 220, AUXILIAR: 110, VOLUME: 6000, JORNADA: 9 }
         };
       });
@@ -175,6 +186,7 @@ export default function App() {
 
     if (!selectedEnv || selectedEnv === 'geral') {
       syncAllData();
+      setIsLoaded(true);
       return;
     }
 
@@ -186,6 +198,7 @@ export default function App() {
       setMetas(envData.metas);
       setData({ atual: envData.atual });
     }
+    setIsLoaded(true);
   }, [selectedEnv, selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -195,10 +208,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (selectedEnv && selectedEnv !== 'geral') {
+    if (isLoaded && selectedEnv && selectedEnv !== 'geral') {
       localStorage.setItem(`logistics_${selectedEnv}_data_v4_${selectedYear}_${selectedMonth}`, JSON.stringify(data));
     }
-  }, [data, selectedEnv, selectedMonth, selectedYear]);
+  }, [data, selectedEnv, selectedMonth, selectedYear, isLoaded]);
 
   useEffect(() => {
     if (selectedEnv) {
@@ -258,19 +271,20 @@ export default function App() {
     });
 
     if (selectedEnv === 'geral') {
-      const operationalEnvs = ['recebimento', 'conferencia', 'separacao', 'expedicao'];
+      const operationalEnvs = ['recebimento', 'separacao'];
       let totalPecasGeneral = 0;
       let totalRealGeneral = 0;
       let totalHeadcountGeneral = 0;
       let totalActivesInPeriod = 0;
       let globalMonthlyReal = 0;
+      let globalMonthlyPecas = 0;
       let totalDaysActiveMonth = 0;
       let aggregateVolumeMeta = 0;
       let periodActualMH = 0;
       let periodDaysActiveCount = 0;
       
       const envStats = operationalEnvs.map(env => {
-        const envObj = allData[env as keyof typeof allData];
+        const envObj = allData[env];
         if (!envObj) return null;
         
         const envData = envObj.atual;
@@ -285,7 +299,9 @@ export default function App() {
         
         // Monthly accumulators
         const totalRealMonth = envData.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0);
+        const totalPecasMonth = envData.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0);
         globalMonthlyReal += totalRealMonth;
+        globalMonthlyPecas += totalPecasMonth;
         const activeDaysMonth = envData.filter(d => (Number(d.pecas) || 0) > 0 || (Number(d.real) || 0) > 0);
         totalDaysActiveMonth += activeDaysMonth.length;
         
@@ -311,9 +327,7 @@ export default function App() {
         totalHeadcountGeneral += hcTotal;
         totalActivesInPeriod += ativosTarget.length;
         
-        if (['recebimento', 'separacao'].includes(env)) {
-          aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
-        }
+        aggregateVolumeMeta += Number(envMetas.VOLUME) || 6000;
 
         return {
           env,
@@ -335,8 +349,8 @@ export default function App() {
 
       const productivity = effectiveMH > 0 ? Number((totalRealGeneral / effectiveMH).toFixed(2)) : 0;
 
-      const baseDemand = totalPecasGeneral / (isDayView ? 1 : 6);
-      const baseReal = totalRealGeneral / (isDayView ? 1 : 6);
+      const baseDemand = totalPecasGeneral / (isDayView ? 1 : (periodDaysActiveCount / (envStats.length || 1) || 1));
+      const baseReal = totalRealGeneral / (isDayView ? 1 : (periodDaysActiveCount / (envStats.length || 1) || 1));
 
       return {
         totalPecas: totalPecasGeneral,
@@ -344,12 +358,15 @@ export default function App() {
         aggregateVolumeMeta,
         horizons: getHorizonStats(baseDemand, baseReal),
         mediaHeadcountTotal: Number(totalHeadcountGeneral.toFixed(1)),
+        mediaHeadcountConf: Number((envStats.reduce((acc, curr) => acc + (curr.env === 'recebimento' ? curr.hcTotal : 0), 0)).toFixed(1)),
+        mediaHeadcountAux: Number((envStats.reduce((acc, curr) => acc + (curr.env === 'separacao' ? curr.hcTotal : 0), 0)).toFixed(1)),
         manualHC: manualGlobalHC,
         manualJornada: manualGlobalJornada,
         diasAtivos: totalActivesInPeriod,
         productivity,
         envStats,
         monthlyReal: globalMonthlyReal,
+        monthlyPecas: globalMonthlyPecas,
         isDayView,
         isWeekView,
         isMonthView,
@@ -402,6 +419,37 @@ export default function App() {
       isYearView
     };
   }, [allData, dashboardDateFilter, selectedEnv, manualGlobalHC, manualGlobalJornada, data.atual]);
+
+  const consolidatedChartData = useMemo(() => {
+    if (selectedEnv !== 'geral') return data.atual;
+    
+    const environments = ['recebimento', 'separacao'];
+    const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    
+    return dias.map((dia, index) => {
+      let totPecas = 0;
+      let totReal = 0;
+      
+      environments.forEach(env => {
+        const dayData = allData[env]?.atual?.[index];
+        if (dayData) {
+          totPecas += Number(dayData.pecas) || 0;
+          totReal += Number(dayData.real) || 0;
+        }
+      });
+      
+      return {
+        id: `fixo-${index}`,
+        dia: dia,
+        pecas: totPecas,
+        real: totReal,
+        // For compatibility with helper functions that might be used
+        conferentes: 0,
+        auxiliares: 0,
+        jornada: 9
+      };
+    });
+  }, [allData, data.atual, selectedEnv]);
 
   const resetWeek = () => {
     if (confirm('Deseja limpar todos os dados e reiniciar a semana?')) {
@@ -896,13 +944,13 @@ export default function App() {
                             <p className="text-xl sm:text-2xl font-black text-blue-900 leading-none">
                               {stats.isDayView 
                                 ? (stats.realPecas ?? 0).toLocaleString()
-                                : Math.round(stats.realPecas / 6).toLocaleString()
+                                : Math.round((stats.horizons?.dia?.real || 0)).toLocaleString()
                               }
                             </p>
                             <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
                               Programado: <span className="text-blue-600 font-black">{stats.isDayView 
                                 ? (stats.totalPecas ?? 0).toLocaleString()
-                                : Math.round(stats.totalPecas / 6).toLocaleString()
+                                : Math.round((stats.horizons?.dia?.demand || 0)).toLocaleString()
                               }</span>
                             </p>
                           </div>
@@ -910,22 +958,42 @@ export default function App() {
                       <div className="bg-red-50/50 p-4 sm:p-5 rounded-2xl border border-red-100/50">
                           <p className="text-[10px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-1.5">Semanal</p>
                           <div className="flex flex-col gap-1.5">
-                            <p className="text-xl sm:text-2xl font-black text-red-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-red-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-xl sm:text-2xl font-black text-red-900 leading-none">
+                              {selectedEnv === 'geral' 
+                                ? (stats.realPecas ?? 0).toLocaleString() 
+                                : data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
+                              Programado: <span className="text-red-700 font-black">
+                                {selectedEnv === 'geral' 
+                                  ? (stats.totalPecas ?? 0).toLocaleString() 
+                                  : data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}
+                              </span>
+                            </p>
                           </div>
                       </div>
                       <div className="bg-blue-50/50 p-4 sm:p-5 rounded-2xl border border-blue-100/50">
                           <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1.5">Mensal</p>
                           <div className="flex flex-col gap-1.5">
-                            <p className="text-xl sm:text-2xl font-black text-blue-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-blue-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-xl sm:text-2xl font-black text-blue-900 leading-none">
+                              {selectedEnv === 'geral' 
+                                ? (stats.monthlyReal || stats.realPecas || 0).toLocaleString() 
+                                : data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">
+                              Programado: <span className="text-blue-700 font-black">
+                                {selectedEnv === 'geral' 
+                                  ? (stats.monthlyPecas || stats.totalPecas || 0).toLocaleString() 
+                                  : data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}
+                              </span>
+                            </p>
                           </div>
                       </div>
                       <div className="bg-slate-50/50 p-4 sm:p-5 rounded-2xl border border-slate-100/50">
-                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Anual</p>
+                          <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Capacidade Meta</p>
                           <div className="flex flex-col gap-1.5">
-                            <p className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{data.atual.reduce((acc, curr) => acc + (Number(curr.real) || 0), 0).toLocaleString()}</p>
-                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Programado: <span className="text-slate-700 font-black">{data.atual.reduce((acc, curr) => acc + (Number(curr.pecas) || 0), 0).toLocaleString()}</span></p>
+                            <p className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{(stats.aggregateVolumeMeta || 6000).toLocaleString()}</p>
+                            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">Ref. Operacional</p>
                           </div>
                       </div>
                   </div>
@@ -1031,16 +1099,24 @@ export default function App() {
                           </p>
                         </div>
                             <div className="text-right sm:block hidden bg-slate-50 p-4 rounded-2xl border border-slate-100 print:p-2 print:border-slate-200">
-                              {selectedEnv === 'separacao' && (
-                                <div className="mb-2">
-                                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
-                                  <p className="text-2xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
-                                </div>
+                              {selectedEnv === 'geral' ? (
+                                <>
+                                  <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter mb-1">Rec: {stats.mediaHeadcountConf}</p>
+                                  <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">Sep: {stats.mediaHeadcountAux}</p>
+                                </>
+                              ) : (
+                                <>
+                                  {selectedEnv === 'separacao' ? (
+                                    <div className="mb-2">
+                                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Prod. Média</p>
+                                      <p className="text-2xl font-black text-slate-700 leading-none">{stats.mediaRealAux} <span className="text-[10px] text-slate-400">PÇ/H</span></p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter mb-1">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
+                                  )}
+                                  <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
+                                </>
                               )}
-                              {selectedEnv !== 'separacao' && (
-                                <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter mb-1">{confLabel.substring(0, 1)}: {stats.mediaHeadcountConf}</p>
-                              )}
-                              <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">{auxLabel.substring(0, 1)}: {stats.mediaHeadcountAux}</p>
                             </div>
                       </div>
                     </div>
@@ -1112,7 +1188,7 @@ export default function App() {
                       </div>
                       <div className="p-6 h-[350px] w-full print:h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={data.atual} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <BarChart data={consolidatedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                             <XAxis 
                               dataKey="dia" 
@@ -1127,10 +1203,20 @@ export default function App() {
                               contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
                             />
                             <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px'}} />
-                            {selectedEnv !== 'separacao' && (
-                              <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+                            {selectedEnv !== 'geral' && (
+                              <>
+                                {selectedEnv !== 'separacao' && (
+                                  <Bar name={`Real ${confLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.conferentes, d.jornada)} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+                                )}
+                                <Bar name={`Real ${auxLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
+                              </>
                             )}
-                            <Bar name={`Real ${auxLabel}`} dataKey={(d: DayData) => calculateProdReal(d.pecas, d.auxiliares, d.jornada)} fill="#991b1b" radius={[4, 4, 0, 0]} />
+                            {selectedEnv === 'geral' && (
+                              <>
+                                <Bar name="Volume Programado" dataKey="pecas" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                                <Bar name="Volume Realizado" dataKey="real" fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+                              </>
+                            )}
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -1141,43 +1227,55 @@ export default function App() {
                         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Histórico do Período</h3>
                       </div>
                       <div className="p-4 space-y-2">
-                        {data.atual.map(dia => {
+                        {consolidatedChartData && consolidatedChartData.map(dia => {
                           const pecas = Number(dia.pecas) || 0;
+                          const real = Number(dia.real) || 0;
                           const jornada = Number(dia.jornada) || 9;
                           const prodC = calculateProdReal(pecas, Number(dia.conferentes) || 0, jornada);
                           const prodA = calculateProdReal(pecas, Number(dia.auxiliares) || 0, jornada);
                           
-                          const volumeOk = pecas >= (metas.VOLUME || 6000);
-                          const prodCOk = selectedEnv === 'separacao' ? true : prodC >= (metas.CONFERENTE || 220);
-                          const prodAOk = prodA >= (metas.AUXILIAR || 110);
+                          const volumeOk = selectedEnv === 'geral' ? real >= pecas : pecas >= (metas.VOLUME || 6000);
+                          const prodCOk = selectedEnv === 'separacao' || selectedEnv === 'geral' ? true : prodC >= (metas.CONFERENTE || 220);
+                          const prodAOk = selectedEnv === 'geral' ? true : prodA >= (metas.AUXILIAR || 110);
                           
-                          const isOk = volumeOk && prodCOk && prodAOk;
-                          const isZero = pecas === 0;
+                          const isOk = selectedEnv === 'geral' ? volumeOk : (volumeOk && prodCOk && prodAOk);
+                          const isZero = pecas === 0 && real === 0;
                           
                           return (
                             <div key={dia.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                               <div className="flex items-center gap-3">
                                 <div className={`w-1.5 h-1.5 rounded-full ${isZero ? 'bg-slate-300' : (isOk ? 'bg-blue-600' : 'bg-red-800')}`} />
                                 <div>
-                                  <p className="text-[11px] font-bold text-slate-800 uppercase">{dia.dia.split('-')[0]}</p>
-                                  <p className="text-[10px] text-slate-400 font-bold">{dia.pecas.toLocaleString()} PÇS</p>
+                                  <p className="text-[11px] font-bold text-slate-800 uppercase">{selectedEnv === 'geral' ? dia.dia : dia.dia.split('-')[0]}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold">{selectedEnv === 'geral' ? `Prog: ${pecas.toLocaleString()}` : `${pecas.toLocaleString()} PÇS`}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-6">
-                                {!isZero && selectedEnv !== 'separacao' && (
-                                  <div className="text-right border-r border-slate-200 pr-5">
-                                    <p className={`text-sm font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>
-                                      {prodC}
+                                {selectedEnv === 'geral' ? (
+                                  <div className="text-right min-w-[50px]">
+                                    <p className={`text-base font-black ${isZero ? 'text-slate-300' : (isOk ? 'text-blue-900' : 'text-red-900')}`}>
+                                      {isZero ? '--' : real.toLocaleString()}
                                     </p>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>
+                                    {!isZero && <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Real PÇ</p>}
                                   </div>
+                                ) : (
+                                  <>
+                                    {!isZero && selectedEnv !== 'separacao' && (
+                                      <div className="text-right border-r border-slate-200 pr-5">
+                                        <p className={`text-sm font-black ${prodCOk ? 'text-blue-900' : 'text-red-900'}`}>
+                                          {prodC}
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{confLabel.substring(0, 1)} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>
+                                      </div>
+                                    )}
+                                    <div className="text-right min-w-[50px]">
+                                      <p className={`text-base font-black ${isZero ? 'text-slate-300' : (prodAOk ? 'text-blue-900' : 'text-red-900')}`}>
+                                        {isZero ? '--' : prodA}
+                                      </p>
+                                      {!isZero && <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{selectedEnv === 'separacao' ? 'PÇ/H' : 'A'} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>}
+                                    </div>
+                                  </>
                                 )}
-                                <div className="text-right min-w-[50px]">
-                                  <p className={`text-base font-black ${isZero ? 'text-slate-300' : (prodAOk ? 'text-blue-900' : 'text-red-900')}`}>
-                                    {isZero ? '--' : prodA}
-                                  </p>
-                                  {!isZero && <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{selectedEnv === 'separacao' ? 'PÇ/H' : 'A'} <span className="text-[8px] opacity-70">(PÇ/H)</span></p>}
-                                </div>
                               </div>
                             </div>
                           );
