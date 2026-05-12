@@ -249,6 +249,16 @@ export default function App() {
     reader.readAsArrayBuffer(file);
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  const paginatedReport = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return inventoryReport.slice(start, start + itemsPerPage);
+  }, [inventoryReport, currentPage]);
+
+  const totalPages = Math.ceil(inventoryReport.length / itemsPerPage);
+
   const processInventory = () => {
     if (!dataYesterday.length || !dataToday.length) {
       alert("⚠️ Erro: Suba ambos os arquivos primeiro (Ontem e Hoje).");
@@ -257,77 +267,103 @@ export default function App() {
 
     setIsProcessing(true);
     setInventoryReport([]);
+    setCurrentPage(1);
     
+    // Use a slight delay to allow the loading state to render
     setTimeout(() => {
       try {
         const report: any[] = [];
-        const mapToday = new Map();
         
-        // CI mapping variations (expanded)
+        // Aliases for better auto-detection
         const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
         const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
         const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.'];
         const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
 
-        if (dataToday.length === 0) throw new Error("Dados de hoje vazios");
-
-        // Map Today by CI
-        dataToday.forEach((row, index) => {
-          const ciValue = getField(row, ciAliases);
-          const ciStr = ciValue !== undefined && ciValue !== null ? String(ciValue).trim() : '';
-          if (ciStr && ciStr !== "undefined" && ciStr !== "") {
-             mapToday.set(ciStr, row);
+        // Pre-create Maps for O(1) lookups
+        const mapYesterday = new Map<string, any>();
+        const mapToday = new Map<string, any>();
+        
+        // Build map yesterday
+        dataYesterday.forEach(row => {
+          const val = getField(row, ciAliases);
+          if (val !== undefined && val !== null) {
+            const key = String(val).trim();
+            if (key) mapYesterday.set(key, row);
           }
         });
+
+        // Build map today
+        dataToday.forEach(row => {
+          const val = getField(row, ciAliases);
+          if (val !== undefined && val !== null) {
+            const key = String(val).trim();
+            if (key) mapToday.set(key, row);
+          }
+        });
+
+        const allCIs = new Set([...mapYesterday.keys(), ...mapToday.keys()]);
         
-        if (mapToday.size === 0) {
-           console.warn("Nenhum CI válido encontrado nos dados de hoje. Verifique as colunas.");
+        if (allCIs.size === 0) {
+          alert("❌ Erro: Não foi possível identificar a coluna 'CI' (Código) nas planilhas. Verifique se os cabeçalhos estão corretos.");
+          setIsProcessing(false);
+          return;
         }
 
         let sOut = 0, sMove = 0, sIn = 0;
 
-        // Compare Yesterday with Today
-        dataYesterday.forEach(y => {
-          const ciRaw = getField(y, ciAliases);
-          const ci = ciRaw !== undefined && ciRaw !== null ? String(ciRaw).trim() : '';
-          if (!ci || ci === "undefined" || ci === "") return;
-
+        allCIs.forEach(ci => {
+          const y = mapYesterday.get(ci);
           const t = mapToday.get(ci);
-          const realY = Number(getField(y, balanceAliases) || 0);
-          const endY = String(getField(y, addressAliases) || 'N/A');
-          const desc = String(getField(y, descAliases) || ci);
 
-          if (!t) {
+          const realY = y ? Number(getField(y, balanceAliases) || 0) : 0;
+          const realT = t ? Number(getField(t, balanceAliases) || 0) : 0;
+          const endY = y ? String(getField(y, addressAliases) || 'N/A') : '---';
+          const endT = t ? String(getField(t, addressAliases) || 'N/A') : '---';
+          const desc = String((t ? getField(t, descAliases) : getField(y, descAliases)) || ci);
+          const diff = realT - realY;
+
+          // Case 1: Removed / Stock Zero
+          if (y && !t) {
             report.push({ 
-              ci, desc, endY, endT: '---', 
+              ci, desc, endY, endT: 'ZERADO', 
               realY, realT: 0, diff: -realY, 
-              status: 'REMOVIDO / ESTOQUE ZERADO', 
+              status: 'REMOVIDO / ESTOQUE ZERADO NO SISTEMA', 
               type: 'CRITICAL',
               color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
             });
             sOut++;
-          } else {
-            const realT = Number(getField(t, balanceAliases) || 0);
-            const endT = String(getField(t, addressAliases) || 'N/A');
-            const diff = realT - realY;
-            
+          } 
+          // Case 2: New Item
+          else if (!y && t) {
+            report.push({ 
+              ci, desc, endY: 'NOVO', endT, 
+              realY: 0, realT, diff: realT, 
+              status: 'ITEM NOVO NO ESTOQUE', 
+              type: 'NEW',
+              color: 'bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600' 
+            });
+            sIn++;
+          }
+          // Case 3: Both exist - check for diffs
+          else if (y && t) {
             let statusString = "OK";
             let colorString = "";
             let type = "NORMAL";
 
             if (endY !== endT && diff === 0) {
-              statusString = "RELOCAÇÃO LOGÍSTICA (MESMO SALDO)";
+              statusString = "RELOCAÇÃO (MESMO SALDO)";
               colorString = "bg-blue-50 text-blue-700";
               type = "MOVE";
               sMove++;
             } else if (endY !== endT && diff !== 0) {
-              statusString = `MOVIMENTAÇÃO + AJUSTE (${diff > 0 ? '+' : ''}${diff} PÇ)`;
+              statusString = `REPOSIÇÃO EM NOVO ENDEREÇO (${diff > 0 ? '+' : ''}${diff} PÇ)`;
               colorString = "bg-indigo-50 text-indigo-700 border-l-4 border-l-indigo-400";
               type = "MIXED";
               sMove++;
             } else if (diff < 0) {
               const isCritical = (realT === 0);
-              statusString = isCritical ? "RUPTURA / ESTOQUE ZEROU" : `SAÍDA DE ESTOQUE: ${Math.abs(diff)} PÇ`;
+              statusString = isCritical ? "RUPTURA / ESTOQUE ZEROU" : `SAÍDA: ${Math.abs(diff)} PÇ`;
               colorString = isCritical ? "bg-orange-100 text-orange-900 border-l-4 border-l-orange-600" : "bg-orange-50 text-orange-700";
               type = isCritical ? "STOCKOUT" : "PICKING";
             } else if (diff > 0) {
@@ -347,34 +383,8 @@ export default function App() {
           }
         });
 
-        // Find NEW items
-        dataToday.forEach(t => {
-          const ciRaw = getField(t, ciAliases);
-          const ci = ciRaw !== undefined && ciRaw !== null ? String(ciRaw).trim() : '';
-          if (!ci || ci === "undefined" || ci === "") return;
-
-          const existsYesterday = dataYesterday.some(y => {
-            const yCiRaw = getField(y, ciAliases);
-            return (yCiRaw !== undefined && yCiRaw !== null && String(yCiRaw).trim() === ci);
-          });
-
-          if (!existsYesterday) {
-            const realT = Number(getField(t, balanceAliases) || 0);
-            const endT = String(getField(t, addressAliases) || 'N/A');
-            const desc = String(getField(t, descAliases) || ci);
-            report.push({ 
-              ci, desc, endY: 'NOVO', endT, 
-              realY: 0, realT, diff: realT, 
-              status: 'ENTRADA NOVA (ITEM NOVO)', 
-              type: 'NEW',
-              color: 'bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600' 
-            });
-            sIn++;
-          }
-        });
-
         if (report.length === 0) {
-          alert("✨ Nenhuma divergência detectada! As planilhas estão idênticas.");
+          alert("✨ Nenhuma divergência detectada! As planilhas estão perfeitamente sincronizadas.");
         } else {
           setInventoryReport(report);
           setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
@@ -385,7 +395,7 @@ export default function App() {
       } finally {
         setIsProcessing(false);
       }
-    }, 800);
+    }, 300);
   };
 
 
@@ -2211,7 +2221,10 @@ export default function App() {
 
                 {inventoryReport.length > 0 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+                    <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                      {/* Decoration for print header */}
+                      <div className="hidden print:block absolute top-0 left-0 w-full h-2 bg-emerald-600" />
+                      
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-1.5 bg-emerald-600 rounded-full" />
@@ -2222,7 +2235,7 @@ export default function App() {
                           O sistema analisou os fluxos e identificou <span className="text-emerald-700">{inventoryReport.length} divergências</span> que requerem atenção ou registros no seu sistema principal.
                         </p>
                       </div>
-                      <div className="bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 text-center">
+                      <div className="bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 text-center print:border-none print:bg-transparent">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Acuracidade Estimada</p>
                         <p className="text-3xl font-black text-blue-900">
                           {inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)).toFixed(1) : '100'}%
@@ -2259,12 +2272,20 @@ export default function App() {
                           </div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Sincronização entre {fileNames.yesterday} e {fileNames.today}</p>
                         </div>
-                        <button 
-                          onClick={exportInventoryExcel}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/10 transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest"
-                        >
-                          <Download size={14} /> Exportar Excel
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={exportInventoryExcel}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/10 transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest"
+                          >
+                            <Download size={14} /> Excel
+                          </button>
+                          <button 
+                            onClick={() => window.print()}
+                            className="bg-blue-900 hover:bg-blue-800 text-white text-[10px] font-black px-6 py-3 rounded-xl shadow-lg shadow-blue-900/10 transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest"
+                          >
+                            <Printer size={14} /> PDF / Imprimir
+                          </button>
+                        </div>
                       </div>
                       <div className="overflow-x-auto max-h-[650px] scrollbar-thin scrollbar-thumb-slate-200">
                         <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -2280,7 +2301,7 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody className="text-xs text-slate-600 font-bold">
-                            {inventoryReport.map((row, idx) => (
+                            {paginatedReport.map((row, idx) => (
                               <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/70 transition-colors ${row.color}`}>
                                 <td className="px-8 py-5">
                                   <div className="flex flex-col gap-1">
@@ -2324,6 +2345,51 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
+                      
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                         <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                               Mostrando {paginatedReport.length} de {inventoryReport.length} divergências
+                            </p>
+                            <div className="flex items-center gap-2">
+                               <button 
+                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                 disabled={currentPage === 1}
+                                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+                               >
+                                 <Menu size={16} className="rotate-90" />
+                               </button>
+                               <div className="flex items-center gap-1">
+                                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                     let pageNum = currentPage;
+                                     if (currentPage < 3) pageNum = i + 1;
+                                     else if (currentPage > totalPages - 2) pageNum = totalPages - 4 + i;
+                                     else pageNum = currentPage - 2 + i;
+                                     
+                                     if (pageNum < 1 || pageNum > totalPages) return null;
+
+                                     return (
+                                       <button 
+                                         key={pageNum}
+                                         onClick={() => setCurrentPage(pageNum)}
+                                         className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-900 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+                                       >
+                                         {pageNum}
+                                       </button>
+                                     );
+                                  })}
+                               </div>
+                               <button 
+                                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                 disabled={currentPage === totalPages}
+                                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+                               >
+                                 <ArrowRightLeft size={16} className="rotate-90" />
+                               </button>
+                            </div>
+                         </div>
+                      )}
                     </div>
                   </div>
                 )}
