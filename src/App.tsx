@@ -181,7 +181,7 @@ export default function App() {
   const CI_ALIASES = ['PRODUTO', 'CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
   const BALANCE_ALIASES = ['SALDO_REAL', 'QUANT', 'Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
   const ADDRESS_ALIASES = ['ENDERECO', 'Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
-  const DESC_ALIASES = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
+  const DESC_ALIASES = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Nome', 'Description', 'Product'];
 
   const detectColumns = (sample: any) => {
     if (!sample) return null;
@@ -292,7 +292,7 @@ export default function App() {
         const ciAliases = ['PRODUTO', 'CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
         const balanceAliases = ['SALDO_REAL', 'QUANT', 'Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
         const addressAliases = ['ENDERECO', 'Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
-        const descAliases = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
+        const descAliases = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Nome', 'Description', 'Product'];
 
         // Saneamento rigoroso e detecção de flutuação para 100% de acerto
         const formatKey = (val: any) => (val !== undefined && val !== null) ? String(val).trim().toUpperCase() : '';
