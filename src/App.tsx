@@ -178,10 +178,10 @@ export default function App() {
   };
 
   // Map of accepted aliases for detection
-  const CI_ALIASES = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia'];
-  const BALANCE_ALIASES = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock'];
-  const ADDRESS_ALIASES = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin'];
-  const DESC_ALIASES = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome'];
+  const CI_ALIASES = ['PRODUTO', 'CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
+  const BALANCE_ALIASES = ['SALDO_REAL', 'QUANT', 'Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
+  const ADDRESS_ALIASES = ['ENDERECO', 'Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
+  const DESC_ALIASES = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
 
   const detectColumns = (sample: any) => {
     if (!sample) return null;
@@ -234,6 +234,8 @@ export default function App() {
 
         if (!mapping?.ci || !mapping?.address) {
           console.warn("Colunas não detectadas automaticamente:", mapping);
+        } else {
+          console.log(`Sucesso: Colunas mapeadas para ${type}`, mapping);
         }
 
         if (type === 'yesterday') setDataYesterday(json);
@@ -286,18 +288,20 @@ export default function App() {
       try {
         const report: any[] = [];
         
-        // Aliases para detecção automática inteligente
-        const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
-        const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
-        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
-        const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
+        // Aliases para detecção automática inteligente baseada no padrão do sistema
+        const ciAliases = ['PRODUTO', 'CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
+        const balanceAliases = ['SALDO_REAL', 'QUANT', 'Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
+        const addressAliases = ['ENDERECO', 'Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
+        const descAliases = ['DECRICAO', 'Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
 
-        // Saneamento rigoroso de chaves e números
+        // Saneamento rigoroso e detecção de flutuação para 100% de acerto
         const formatKey = (val: any) => (val !== undefined && val !== null) ? String(val).trim().toUpperCase() : '';
         const formatNum = (val: any) => {
           if (typeof val === 'number') return val;
           if (!val) return 0;
-          return Number(String(val).replace(/[^0-9.-]+/g, "")) || 0;
+          // Limpeza de caracteres não numéricos mas mantendo decimais
+          const str = String(val).replace(/[^\d.,-]/g, '').replace(',', '.');
+          return parseFloat(str) || 0;
         };
 
         const mapY_Full = new Map<string, any>();
@@ -352,21 +356,21 @@ export default function App() {
 
           if (yRow && !tRow) {
             const itemExisteOutroLugar = ciActivityT.has(ci);
-            status = itemExisteOutroLugar ? `TRANSFERÊNCIA (SAIU DE ${addr})` : "REMOVIDO TOTAL / SALDO ZEROU";
+            status = itemExisteOutroLugar ? `MOVIMENTADO PARA NOVO ENDEREÇO` : "REMOVIDO / ESTOQUE ZERADO";
             type = itemExisteOutroLugar ? "MOVE" : "CRITICAL";
-            color = itemExisteOutroLugar ? "bg-blue-50 text-blue-700 border-l-4 border-l-blue-400" : "bg-red-50 text-red-700 font-bold border-l-4 border-l-red-600";
+            color = itemExisteOutroLugar ? "bg-blue-50 text-blue-700 border-l-4 border-l-blue-500" : "bg-red-50 text-red-700 font-bold border-l-4 border-l-red-600";
             itemExisteOutroLugar ? sMove++ : sOut++;
             
-            report.push({ ci, desc, endY: addr, endT: itemExisteOutroLugar ? 'MUDOU LOCAL' : 'ZERADO', realY: qtyY, realT: 0, diff: -qtyY, status, type, color });
+            report.push({ ci, desc, endY: addr, endT: itemExisteOutroLugar ? 'REALOCADO' : 'ZERADO', realY: qtyY, realT: 0, diff: -qtyY, status, type, color });
           } 
           else if (!yRow && tRow) {
             const itemExistiaOntem = ciActivityY.has(ci);
-            status = itemExistiaOntem ? `TRANSFERÊNCIA (ENTROU EM ${addr})` : "ITEM NOVO / PRIMEIRA ENTRADA";
+            status = itemExistiaOntem ? `RECEBIDO DE OUTRO ENDEREÇO (MOVE)` : "ENTRADA NOVA / ITEM NOVO";
             type = itemExistiaOntem ? "MOVE" : "NEW";
             color = itemExistiaOntem ? "bg-indigo-50 text-indigo-700 border-l-4 border-l-indigo-400" : "bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600";
             itemExistiaOntem ? sMove++ : sIn++;
 
-            report.push({ ci, desc, endY: itemExistiaOntem ? 'NOVO LOCAL' : 'NOVO', endT: addr, realY: 0, realT: qtyT, diff: qtyT, status, type, color });
+            report.push({ ci, desc, endY: itemExistiaOntem ? 'ANTIGO LOCAL' : 'NOVO', endT: addr, realY: 0, realT: qtyT, diff: qtyT, status, type, color });
           }
           else if (yRow && tRow && diff !== 0) {
             if (diff > 0) {
@@ -2221,25 +2225,67 @@ export default function App() {
 
                 {inventoryReport.length > 0 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
                       {/* Decoration for print header */}
-                      <div className="hidden print:block absolute top-0 left-0 w-full h-2 bg-emerald-600" />
+                      <div className="hidden print:block absolute top-0 left-0 w-full h-2 bg-blue-900" />
                       
-                      <div className="space-y-2">
+                      <div className="space-y-4 flex-1">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-1.5 bg-emerald-600 rounded-full" />
-                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Resumo Operacional</span>
+                          <div className="w-8 h-1.5 bg-blue-900 rounded-full" />
+                          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Relatório de Movimentação & Divergências</h2>
                         </div>
-                        <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Inventário Diário Concluído</h3>
-                        <p className="text-xs font-bold text-slate-500 max-w-lg">
-                          O sistema analisou os fluxos e identificou <span className="text-emerald-700">{inventoryReport.length} divergências</span> que requerem atenção ou registros no seu sistema principal.
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-2xl">
+                          Análise automatizada baseada no formato de auditoria bin-a-bin. Identificamos <span className="text-blue-900 font-bold">{inventoryReport.length} alterações</span> totais que impactam a acuracidade do armazém.
                         </p>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all hover:shadow-inner">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entradas / Novas</p>
+                            <p className="text-2xl font-black text-emerald-600">+{inventoryStats.in}</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all hover:shadow-inner">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Saídas / Zeros</p>
+                            <p className="text-2xl font-black text-orange-600">-{inventoryStats.out}</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all hover:shadow-inner">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Realocações</p>
+                            <p className="text-2xl font-black text-blue-600">{inventoryStats.move}</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all hover:shadow-inner">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Divergência Total</p>
+                            <p className="text-2xl font-black text-red-600">{inventoryReport.length}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 text-center print:border-none print:bg-transparent">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Acuracidade Estimada</p>
-                        <p className="text-3xl font-black text-blue-900">
-                          {inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)).toFixed(1) : '100'}%
-                        </p>
+
+                      <div className="flex flex-col gap-4 border-l border-slate-100 pl-6 no-print">
+                        <div className="bg-slate-900 text-white px-6 py-6 rounded-2xl border border-slate-800 text-center shadow-xl shadow-blue-900/10 min-w-[180px]">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Acuracidade Geral</p>
+                          <p className="text-4xl font-black text-white">
+                            {inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)).toFixed(1) : '100'}%
+                          </p>
+                          <div className="mt-4 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                             <motion.div 
+                               initial={{ width: 0 }}
+                               animate={{ width: `${inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)) : 100}%` }}
+                               className="h-full bg-blue-400" 
+                             />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Print-only Stats */}
+                      <div className="hidden print:flex flex-col justify-between text-right border-l border-slate-200 pl-8 min-w-[150px]">
+                         <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase">Acuracidade</p>
+                            <p className="text-3xl font-black text-slate-900">
+                              {inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)).toFixed(1) : '100'}%
+                            </p>
+                         </div>
+                         <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase">Saldo Total Analisado</p>
+                            <p className="text-xl font-black text-slate-900">{inventoryStats.total.toLocaleString()}</p>
+                         </div>
                       </div>
                     </div>
                     {/* Stats */}
