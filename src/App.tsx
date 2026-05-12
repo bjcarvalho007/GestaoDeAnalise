@@ -158,6 +158,25 @@ export default function App() {
   const [fileNames, setFileNames] = useState({ yesterday: '', today: '' });
   const [columnMaps, setColumnMaps] = useState<{ yesterday: any, today: any }>({ yesterday: null, today: null });
 
+  // Helper to find field regardless of key casing or variation
+  const getField = (obj: any, keys: string[]) => {
+    if (!obj) return undefined;
+    const objKeys = Object.keys(obj);
+    const lowerKeys = keys.map(k => k.toLowerCase());
+    
+    // Exact match first
+    const exactMatch = objKeys.find(ok => lowerKeys.includes(ok.toLowerCase()));
+    if (exactMatch) return obj[exactMatch];
+
+    // Partial match (contains)
+    const partialMatch = objKeys.find(ok => {
+      const lowOk = ok.toLowerCase();
+      return lowerKeys.some(lk => lowOk.includes(lk) || lk.includes(lowOk));
+    });
+    
+    return partialMatch ? obj[partialMatch] : undefined;
+  };
+
   // Map of accepted aliases for detection
   const CI_ALIASES = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia'];
   const BALANCE_ALIASES = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock'];
@@ -188,8 +207,23 @@ export default function App() {
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Planilha vazia");
         
-        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+        // Try to handle sheets with empty rows at the top
+        let json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "", blankrows: false });
         
+        if (Array.isArray(json) && json.length > 0 && Array.isArray(json[0])) {
+           // If it's still raw arrays, we need to promote a row to headers
+           const dataRows = json as any[][];
+           const headerRowIndex = dataRows.findIndex(row => row.some(cell => CI_ALIASES.some(a => String(cell).toLowerCase().includes(a.toLowerCase()))));
+           if (headerRowIndex !== -1) {
+              const headers = dataRows[headerRowIndex];
+              json = dataRows.slice(headerRowIndex + 1).map(row => {
+                 const obj: any = {};
+                 headers.forEach((h, i) => { if(h) obj[String(h)] = row[i]; });
+                 return obj;
+              });
+           }
+        }
+
         if (!Array.isArray(json) || json.length === 0) {
           alert("O arquivo parece estar vazio ou não tem o formato correto.");
           return;
@@ -199,14 +233,17 @@ export default function App() {
         setColumnMaps(prev => ({ ...prev, [type]: mapping }));
 
         if (!mapping?.ci || !mapping?.address) {
-          alert(`⚠️ Atenção: Não detectamos colunas obrigatórias como 'CI' ou 'Endereço' de forma automática. O sistema tentará processar via busca inteligente.`);
+          console.warn("Colunas não detectadas automaticamente:", mapping);
         }
 
         if (type === 'yesterday') setDataYesterday(json);
         else setDataToday(json);
       } catch (error) {
         console.error("Erro ao ler arquivo:", error);
-        alert("Erro ao processar o arquivo Excel. Verifique se o arquivo está protegido ou corrompido.");
+        alert("Erro ao processar o arquivo Excel. Verifique se o formato é suportado (.xlsx, .xls ou .csv).");
+      } finally {
+        // Reset input for same-file re-upload
+        e.target.value = '';
       }
     };
     reader.readAsArrayBuffer(file);
@@ -226,35 +263,45 @@ export default function App() {
         const report: any[] = [];
         const mapToday = new Map();
         
-        // CI mapping variations
-        const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência'];
-        const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock'];
-        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin'];
-        const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto'];
+        // CI mapping variations (expanded)
+        const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
+        const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
+        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.'];
+        const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
+
+        if (dataToday.length === 0) throw new Error("Dados de hoje vazios");
 
         // Map Today by CI
-        dataToday.forEach(row => {
-          const ciValue = String(getField(row, ciAliases) || '');
-          if (ciValue && ciValue !== "undefined") mapToday.set(ciValue, row);
+        dataToday.forEach((row, index) => {
+          const ciValue = getField(row, ciAliases);
+          const ciStr = ciValue !== undefined && ciValue !== null ? String(ciValue).trim() : '';
+          if (ciStr && ciStr !== "undefined" && ciStr !== "") {
+             mapToday.set(ciStr, row);
+          }
         });
+        
+        if (mapToday.size === 0) {
+           console.warn("Nenhum CI válido encontrado nos dados de hoje. Verifique as colunas.");
+        }
 
         let sOut = 0, sMove = 0, sIn = 0;
 
         // Compare Yesterday with Today
         dataYesterday.forEach(y => {
-          const ci = String(getField(y, ciAliases) || '');
-          if (!ci || ci === "undefined") return;
+          const ciRaw = getField(y, ciAliases);
+          const ci = ciRaw !== undefined && ciRaw !== null ? String(ciRaw).trim() : '';
+          if (!ci || ci === "undefined" || ci === "") return;
 
           const t = mapToday.get(ci);
           const realY = Number(getField(y, balanceAliases) || 0);
           const endY = String(getField(y, addressAliases) || 'N/A');
-          const desc = String(getField(y, descAliases) || 'Item sem descrição');
+          const desc = String(getField(y, descAliases) || ci);
 
           if (!t) {
             report.push({ 
-              ci, desc, endY, endT: 'ZERADO / REMOVIDO', 
+              ci, desc, endY, endT: '---', 
               realY, realT: 0, diff: -realY, 
-              status: 'ESTOQUE ZERADO NO SISTEMA', 
+              status: 'REMOVIDO / ESTOQUE ZERADO', 
               type: 'CRITICAL',
               color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
             });
@@ -302,18 +349,23 @@ export default function App() {
 
         // Find NEW items
         dataToday.forEach(t => {
-          const ci = String(getField(t, ciAliases) || '');
-          if (!ci || ci === "undefined") return;
+          const ciRaw = getField(t, ciAliases);
+          const ci = ciRaw !== undefined && ciRaw !== null ? String(ciRaw).trim() : '';
+          if (!ci || ci === "undefined" || ci === "") return;
 
-          const existsYesterday = dataYesterday.some(y => String(getField(y, ciAliases) || '') === ci);
+          const existsYesterday = dataYesterday.some(y => {
+            const yCiRaw = getField(y, ciAliases);
+            return (yCiRaw !== undefined && yCiRaw !== null && String(yCiRaw).trim() === ci);
+          });
+
           if (!existsYesterday) {
             const realT = Number(getField(t, balanceAliases) || 0);
             const endT = String(getField(t, addressAliases) || 'N/A');
-            const desc = String(getField(t, descAliases) || 'Item novo');
+            const desc = String(getField(t, descAliases) || ci);
             report.push({ 
-              ci, desc, endY: 'NOVO NO ESTOQUE', endT, 
+              ci, desc, endY: 'NOVO', endT, 
               realY: 0, realT, diff: realT, 
-              status: 'ENTRADA NOVA (NÃO ESTAVA ONTEM)', 
+              status: 'ENTRADA NOVA (ITEM NOVO)', 
               type: 'NEW',
               color: 'bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600' 
             });
@@ -322,14 +374,14 @@ export default function App() {
         });
 
         if (report.length === 0) {
-          alert("✨ Nenhuma divergência detectada! Tudo em conformidade.");
+          alert("✨ Nenhuma divergência detectada! As planilhas estão idênticas.");
         } else {
           setInventoryReport(report);
           setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
         }
       } catch (err) {
         console.error("Erro fatal no processamento:", err);
-        alert("Erro ao processar as planilhas. Certifique-se de que os dados estão na primeira aba do Excel.");
+        alert("Erro no processamento. Verifique se as planilhas têm colunas como 'CI' e 'Endereço'.");
       } finally {
         setIsProcessing(false);
       }
