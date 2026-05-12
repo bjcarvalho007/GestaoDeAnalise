@@ -254,18 +254,25 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const filteredReport = useMemo(() => {
-    if (!searchTerm) return inventoryReport;
+    let filtered = inventoryReport;
+    
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter(r => r.type === statusFilter);
+    }
+
+    if (!searchTerm) return filtered;
     const lowSearch = searchTerm.toLowerCase();
-    return inventoryReport.filter(r => 
+    return filtered.filter(r => 
       r.ci.toLowerCase().includes(lowSearch) || 
       r.desc.toLowerCase().includes(lowSearch) ||
       r.endY.toLowerCase().includes(lowSearch) ||
       r.endT.toLowerCase().includes(lowSearch) ||
       r.status.toLowerCase().includes(lowSearch)
     );
-  }, [inventoryReport, searchTerm]);
+  }, [inventoryReport, searchTerm, statusFilter]);
 
   const paginatedReport = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -2344,6 +2351,33 @@ export default function App() {
                             <Printer size={14} /> PDF / Imprimir
                           </button>
                         </div>
+                      </div>
+
+                      {/* Status Filters Bar */}
+                      <div className="px-8 py-4 bg-white border-b border-slate-100 flex flex-wrap items-center gap-3 no-print overflow-x-auto">
+                        {[
+                          { id: 'ALL', label: 'TUDO', color: 'bg-slate-900', count: inventoryReport.length },
+                          { id: 'NEW', label: 'NOVOS / ENTRADAS', color: 'bg-emerald-600', count: inventoryReport.filter(r => r.type === 'NEW').length },
+                          { id: 'MOVE', label: 'MOVIMENTAÇÃO', color: 'bg-blue-600', count: inventoryReport.filter(r => r.type === 'MOVE').length },
+                          { id: 'CRITICAL', label: 'SAÍDAS / ZERADOS', color: 'bg-red-600', count: inventoryReport.filter(r => r.type === 'CRITICAL').length },
+                          { id: 'REPLENISH', label: 'REPOSIÇÃO', color: 'bg-emerald-400', count: inventoryReport.filter(r => r.type === 'REPLENISH').length },
+                          { id: 'PICKING', label: 'RETIRADAS', color: 'bg-orange-500', count: inventoryReport.filter(r => r.type === 'PICKING').length },
+                        ].map(filter => (
+                          <button
+                            key={filter.id}
+                            onClick={() => { setStatusFilter(filter.id); setCurrentPage(1); }}
+                            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
+                              statusFilter === filter.id 
+                              ? `${filter.color} text-white border-transparent shadow-lg shadow-blue-900/10 scale-105` 
+                              : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50 hover:text-slate-600'
+                            }`}
+                          >
+                            <span>{filter.label}</span>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] ${statusFilter === filter.id ? 'bg-white/20' : 'bg-slate-100'}`}>
+                              {filter.count}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                       <div className="overflow-x-auto max-h-[650px] scrollbar-thin scrollbar-thumb-slate-200">
                         <table className="w-full text-left border-collapse whitespace-nowrap">
