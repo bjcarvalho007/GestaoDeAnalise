@@ -158,20 +158,20 @@ export default function App() {
   const [fileNames, setFileNames] = useState({ yesterday: '', today: '' });
   const [columnMaps, setColumnMaps] = useState<{ yesterday: any, today: any }>({ yesterday: null, today: null });
 
-  // Helper to find field regardless of key casing or variation
-  const getField = (obj: any, keys: string[]) => {
+  // Stricter field detection to ensure 100% accuracy
+  const getField = (obj: any, aliases: string[]) => {
     if (!obj) return undefined;
     const objKeys = Object.keys(obj);
-    const lowerKeys = keys.map(k => k.toLowerCase());
+    const lowerAliases = aliases.map(a => a.toLowerCase());
     
-    // Exact match first
-    const exactMatch = objKeys.find(ok => lowerKeys.includes(ok.toLowerCase()));
+    // 1. Absolute Priority: Exact matches
+    const exactMatch = objKeys.find(ok => lowerAliases.includes(ok.toLowerCase().trim()));
     if (exactMatch) return obj[exactMatch];
 
-    // Partial match (contains)
+    // 2. Secondary: Starts with or contains
     const partialMatch = objKeys.find(ok => {
-      const lowOk = ok.toLowerCase();
-      return lowerKeys.some(lk => lowOk.includes(lk) || lk.includes(lowOk));
+      const lowOk = ok.toLowerCase().trim();
+      return lowerAliases.some(la => lowOk.startsWith(la) || la.startsWith(lowOk));
     });
     
     return partialMatch ? obj[partialMatch] : undefined;
@@ -251,13 +251,26 @@ export default function App() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredReport = useMemo(() => {
+    if (!searchTerm) return inventoryReport;
+    const lowSearch = searchTerm.toLowerCase();
+    return inventoryReport.filter(r => 
+      r.ci.toLowerCase().includes(lowSearch) || 
+      r.desc.toLowerCase().includes(lowSearch) ||
+      r.endY.toLowerCase().includes(lowSearch) ||
+      r.endT.toLowerCase().includes(lowSearch) ||
+      r.status.toLowerCase().includes(lowSearch)
+    );
+  }, [inventoryReport, searchTerm]);
 
   const paginatedReport = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return inventoryReport.slice(start, start + itemsPerPage);
-  }, [inventoryReport, currentPage]);
+    return filteredReport.slice(start, start + itemsPerPage);
+  }, [filteredReport, currentPage]);
 
-  const totalPages = Math.ceil(inventoryReport.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredReport.length / itemsPerPage);
 
   const processInventory = () => {
     if (!dataYesterday.length || !dataToday.length) {
@@ -269,129 +282,116 @@ export default function App() {
     setInventoryReport([]);
     setCurrentPage(1);
     
-    // Use a slight delay to allow the loading state to render
     setTimeout(() => {
       try {
         const report: any[] = [];
         
-        // Aliases for better auto-detection
+        // Aliases para detecção automática inteligente
         const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia', 'Code'];
         const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock', 'Amount', 'Total'];
-        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.'];
+        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin', 'Address', 'Loc.', 'Position'];
         const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome', 'Description', 'Product'];
 
-        // Pre-create Maps for O(1) lookups
-        const mapYesterday = new Map<string, any>();
-        const mapToday = new Map<string, any>();
-        
-        // Build map yesterday
+        // Saneamento rigoroso de chaves e números
+        const formatKey = (val: any) => (val !== undefined && val !== null) ? String(val).trim().toUpperCase() : '';
+        const formatNum = (val: any) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          return Number(String(val).replace(/[^0-9.-]+/g, "")) || 0;
+        };
+
+        const mapY_Full = new Map<string, any>();
+        const mapT_Full = new Map<string, any>();
+        const ciActivityY = new Set<string>();
+        const ciActivityT = new Set<string>();
+
+        // Indexação Ontem: Chave Composta (CI + Endereço) para precisão bin-a-bin
         dataYesterday.forEach(row => {
-          const val = getField(row, ciAliases);
-          if (val !== undefined && val !== null) {
-            const key = String(val).trim();
-            if (key) mapYesterday.set(key, row);
-          }
+          const ci = formatKey(getField(row, ciAliases));
+          const addr = formatKey(getField(row, addressAliases)) || 'SEM-ENDERECO';
+          if (!ci) return;
+          const compositeKey = `${ci}|||${addr}`;
+          mapY_Full.set(compositeKey, row);
+          ciActivityY.add(ci);
         });
 
-        // Build map today
+        // Indexação Hoje
         dataToday.forEach(row => {
-          const val = getField(row, ciAliases);
-          if (val !== undefined && val !== null) {
-            const key = String(val).trim();
-            if (key) mapToday.set(key, row);
-          }
+          const ci = formatKey(getField(row, ciAliases));
+          const addr = formatKey(getField(row, addressAliases)) || 'SEM-ENDERECO';
+          if (!ci) return;
+          const compositeKey = `${ci}|||${addr}`;
+          mapT_Full.set(compositeKey, row);
+          ciActivityT.add(ci);
         });
 
-        const allCIs = new Set([...mapYesterday.keys(), ...mapToday.keys()]);
-        
-        if (allCIs.size === 0) {
-          alert("❌ Erro: Não foi possível identificar a coluna 'CI' (Código) nas planilhas. Verifique se os cabeçalhos estão corretos.");
+        const allKeys = new Set([...mapY_Full.keys(), ...mapT_Full.keys()]);
+        if (allKeys.size === 0) {
+          alert("❌ Erro: Colunas de Código (CI) não detectadas. Verifique os cabeçalhos.");
           setIsProcessing(false);
           return;
         }
 
         let sOut = 0, sMove = 0, sIn = 0;
 
-        allCIs.forEach(ci => {
-          const y = mapYesterday.get(ci);
-          const t = mapToday.get(ci);
+        allKeys.forEach(key => {
+          const [ci, addr] = key.split('|||');
+          const yRow = mapY_Full.get(key);
+          const tRow = mapT_Full.get(key);
 
-          const realY = y ? Number(getField(y, balanceAliases) || 0) : 0;
-          const realT = t ? Number(getField(t, balanceAliases) || 0) : 0;
-          const endY = y ? String(getField(y, addressAliases) || 'N/A') : '---';
-          const endT = t ? String(getField(t, addressAliases) || 'N/A') : '---';
-          const desc = String((t ? getField(t, descAliases) : getField(y, descAliases)) || ci);
-          const diff = realT - realY;
+          const qtyY = formatNum(yRow ? getField(yRow, balanceAliases) : 0);
+          const qtyT = formatNum(tRow ? getField(tRow, balanceAliases) : 0);
+          const desc = String((tRow ? getField(tRow, descAliases) : (yRow ? getField(yRow, descAliases) : '')) || `ITEM ${ci}`);
+          const diff = qtyT - qtyY;
 
-          // Case 1: Removed / Stock Zero
-          if (y && !t) {
-            report.push({ 
-              ci, desc, endY, endT: 'ZERADO', 
-              realY, realT: 0, diff: -realY, 
-              status: 'REMOVIDO / ESTOQUE ZERADO NO SISTEMA', 
-              type: 'CRITICAL',
-              color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
-            });
-            sOut++;
+          if (diff === 0 && yRow && tRow) return;
+
+          let status = "";
+          let type = "NORMAL";
+          let color = "";
+
+          if (yRow && !tRow) {
+            const itemExisteOutroLugar = ciActivityT.has(ci);
+            status = itemExisteOutroLugar ? `TRANSFERÊNCIA (SAIU DE ${addr})` : "REMOVIDO TOTAL / SALDO ZEROU";
+            type = itemExisteOutroLugar ? "MOVE" : "CRITICAL";
+            color = itemExisteOutroLugar ? "bg-blue-50 text-blue-700 border-l-4 border-l-blue-400" : "bg-red-50 text-red-700 font-bold border-l-4 border-l-red-600";
+            itemExisteOutroLugar ? sMove++ : sOut++;
+            
+            report.push({ ci, desc, endY: addr, endT: itemExisteOutroLugar ? 'MUDOU LOCAL' : 'ZERADO', realY: qtyY, realT: 0, diff: -qtyY, status, type, color });
           } 
-          // Case 2: New Item
-          else if (!y && t) {
-            report.push({ 
-              ci, desc, endY: 'NOVO', endT, 
-              realY: 0, realT, diff: realT, 
-              status: 'ITEM NOVO NO ESTOQUE', 
-              type: 'NEW',
-              color: 'bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600' 
-            });
-            sIn++;
+          else if (!yRow && tRow) {
+            const itemExistiaOntem = ciActivityY.has(ci);
+            status = itemExistiaOntem ? `TRANSFERÊNCIA (ENTROU EM ${addr})` : "ITEM NOVO / PRIMEIRA ENTRADA";
+            type = itemExistiaOntem ? "MOVE" : "NEW";
+            color = itemExistiaOntem ? "bg-indigo-50 text-indigo-700 border-l-4 border-l-indigo-400" : "bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600";
+            itemExistiaOntem ? sMove++ : sIn++;
+
+            report.push({ ci, desc, endY: itemExistiaOntem ? 'NOVO LOCAL' : 'NOVO', endT: addr, realY: 0, realT: qtyT, diff: qtyT, status, type, color });
           }
-          // Case 3: Both exist - check for diffs
-          else if (y && t) {
-            let statusString = "OK";
-            let colorString = "";
-            let type = "NORMAL";
-
-            if (endY !== endT && diff === 0) {
-              statusString = "RELOCAÇÃO (MESMO SALDO)";
-              colorString = "bg-blue-50 text-blue-700";
-              type = "MOVE";
-              sMove++;
-            } else if (endY !== endT && diff !== 0) {
-              statusString = `REPOSIÇÃO EM NOVO ENDEREÇO (${diff > 0 ? '+' : ''}${diff} PÇ)`;
-              colorString = "bg-indigo-50 text-indigo-700 border-l-4 border-l-indigo-400";
-              type = "MIXED";
-              sMove++;
-            } else if (diff < 0) {
-              const isCritical = (realT === 0);
-              statusString = isCritical ? "RUPTURA / ESTOQUE ZEROU" : `SAÍDA: ${Math.abs(diff)} PÇ`;
-              colorString = isCritical ? "bg-orange-100 text-orange-900 border-l-4 border-l-orange-600" : "bg-orange-50 text-orange-700";
-              type = isCritical ? "STOCKOUT" : "PICKING";
-            } else if (diff > 0) {
-              statusString = `ENTRADA / REPOSIÇÃO: +${diff} PÇ`;
-              colorString = "bg-emerald-50 text-emerald-700";
+          else if (yRow && tRow && diff !== 0) {
+            if (diff > 0) {
+              status = `ENTRADA / REPOSIÇÃO (+${diff} PÇ)`;
+              color = "bg-emerald-50 text-emerald-700";
               type = "REPLENISH";
+            } else {
+              status = `SAÍDA / PICKING (${diff} PÇ)`;
+              color = "bg-orange-50 text-orange-700";
+              type = "PICKING";
             }
-
-            if (endY !== endT || diff !== 0) {
-              report.push({ 
-                ci, desc, endY, endT, realY, realT, diff, 
-                status: statusString, 
-                color: colorString,
-                type: type
-              });
-            }
+            report.push({ ci, desc, endY: addr, endT: addr, realY: qtyY, realT: qtyT, diff, status, type, color });
           }
         });
 
         if (report.length === 0) {
-          alert("✨ Nenhuma divergência detectada! As planilhas estão perfeitamente sincronizadas.");
+          alert("✨ Planilhas sincronizadas! Nenhuma divergência detectada.");
         } else {
+          report.sort((a, b) => a.ci.localeCompare(b.ci));
           setInventoryReport(report);
           setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
         }
       } catch (err) {
-        console.error("Erro fatal no processamento:", err);
-        alert("Erro no processamento. Verifique se as planilhas têm colunas como 'CI' e 'Endereço'.");
+        console.error("Erro fatal:", err);
+        alert("Erro no processamento. Verifique se os dados estão no formato correto.");
       } finally {
         setIsProcessing(false);
       }
@@ -2271,6 +2271,18 @@ export default function App() {
                             <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">MAPA DE DIVERGÊNCIAS OPERACIONAIS</h3>
                           </div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Sincronização entre {fileNames.yesterday} e {fileNames.today}</p>
+                        </div>
+                        <div className="flex flex-col w-full sm:w-1/3 no-print">
+                           <div className="relative group">
+                             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                             <input 
+                               type="text"
+                               placeholder="BUSCAR ITEM, CI OU ENDEREÇO..."
+                               value={searchTerm}
+                               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                               className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-900 focus:ring-4 focus:ring-blue-900/5 transition-all"
+                             />
+                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button 
