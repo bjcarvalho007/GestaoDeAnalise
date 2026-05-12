@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, 
   Zap, 
@@ -156,6 +156,24 @@ export default function App() {
   const [inventoryStats, setInventoryStats] = useState({ total: 0, out: 0, move: 0, in: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileNames, setFileNames] = useState({ yesterday: '', today: '' });
+  const [columnMaps, setColumnMaps] = useState<{ yesterday: any, today: any }>({ yesterday: null, today: null });
+
+  // Map of accepted aliases for detection
+  const CI_ALIASES = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência', 'Referencia'];
+  const BALANCE_ALIASES = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock'];
+  const ADDRESS_ALIASES = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin'];
+  const DESC_ALIASES = ['Descrição', 'Descricao', 'Item Desc', 'Produto', 'Nome'];
+
+  const detectColumns = (sample: any) => {
+    if (!sample) return null;
+    const keys = Object.keys(sample);
+    return {
+      ci: keys.find(k => CI_ALIASES.some(a => k.toLowerCase().includes(a.toLowerCase()))),
+      balance: keys.find(k => BALANCE_ALIASES.some(a => k.toLowerCase().includes(a.toLowerCase()))),
+      address: keys.find(k => ADDRESS_ALIASES.some(a => k.toLowerCase().includes(a.toLowerCase()))),
+      desc: keys.find(k => DESC_ALIASES.some(a => k.toLowerCase().includes(a.toLowerCase())))
+    };
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'yesterday' | 'today') => {
     const file = e.target.files?.[0];
@@ -168,12 +186,27 @@ export default function App() {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
-        const json = XLSX.utils.sheet_to_json(sheetName ? workbook.Sheets[sheetName] : {});
+        if (!sheetName) throw new Error("Planilha vazia");
+        
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+        
+        if (!Array.isArray(json) || json.length === 0) {
+          alert("O arquivo parece estar vazio ou não tem o formato correto.");
+          return;
+        }
+
+        const mapping = detectColumns(json[0]);
+        setColumnMaps(prev => ({ ...prev, [type]: mapping }));
+
+        if (!mapping?.ci || !mapping?.address) {
+          alert(`⚠️ Atenção: Não detectamos colunas obrigatórias como 'CI' ou 'Endereço' de forma automática. O sistema tentará processar via busca inteligente.`);
+        }
+
         if (type === 'yesterday') setDataYesterday(json);
         else setDataToday(json);
       } catch (error) {
         console.error("Erro ao ler arquivo:", error);
-        alert("Erro ao processar o arquivo Excel. Verifique o formato.");
+        alert("Erro ao processar o arquivo Excel. Verifique se o arquivo está protegido ou corrompido.");
       }
     };
     reader.readAsArrayBuffer(file);
@@ -181,109 +214,128 @@ export default function App() {
 
   const processInventory = () => {
     if (!dataYesterday.length || !dataToday.length) {
-      alert("Por favor, selecione ambos os arquivos (Ontem e Hoje) primeiro.");
+      alert("⚠️ Erro: Suba ambos os arquivos primeiro (Ontem e Hoje).");
       return;
     }
 
     setIsProcessing(true);
+    setInventoryReport([]);
     
-    // Simulate processing delay for "intelligent" feel
     setTimeout(() => {
-      const report: any[] = [];
-      const mapToday = new Map();
-      
-      // Map Today by CI
-      dataToday.forEach(row => {
-        const key = String(row['CI'] || row['ci'] || '');
-        if (key) mapToday.set(key, row);
-      });
+      try {
+        const report: any[] = [];
+        const mapToday = new Map();
+        
+        // CI mapping variations
+        const ciAliases = ['CI', 'Código', 'Cod', 'Item', 'SKU', 'ID', 'Referência'];
+        const balanceAliases = ['Real', 'Saldo', 'Quantidade', 'Qtd', 'Estoque', 'Qtd Real', 'Stock'];
+        const addressAliases = ['Endereço', 'Endereco', 'Loc', 'Localizacao', 'Posição', 'Slot', 'Bin'];
+        const descAliases = ['Descrição', 'Descricao', 'Item Desc', 'Produto'];
 
-      let sOut = 0, sMove = 0, sIn = 0;
+        // Map Today by CI
+        dataToday.forEach(row => {
+          const ciValue = String(getField(row, ciAliases) || '');
+          if (ciValue && ciValue !== "undefined") mapToday.set(ciValue, row);
+        });
 
-      // Compare Yesterday with Today
-      dataYesterday.forEach(y => {
-        const ci = String(y['CI'] || y['ci'] || '');
-        if (!ci) return;
+        let sOut = 0, sMove = 0, sIn = 0;
 
-        const t = mapToday.get(ci);
-        const realY = Number(y['Real'] || y['real'] || 0);
-        const endY = String(y['Endereço'] || y['endereço'] || y['endereco'] || '');
-        const desc = String(y['Descrição'] || y['descrição'] || '');
+        // Compare Yesterday with Today
+        dataYesterday.forEach(y => {
+          const ci = String(getField(y, ciAliases) || '');
+          if (!ci || ci === "undefined") return;
 
-        if (!t) {
-          report.push({ 
-            ci, desc, endY, endT: '---', 
-            realY, realT: 0, diff: -realY, 
-            status: 'ESTOQUE ZERADO / REMOVIDO', 
-            type: 'CRITICAL',
-            color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
-          });
-          sOut++;
-        } else {
-          const realT = Number(t['Real'] || t['real'] || 0);
-          const endT = String(t['Endereço'] || t['endereço'] || t['endereco'] || '');
-          const diff = realT - realY;
-          
-          let statusString = "OK";
-          let colorString = "";
-          let type = "NORMAL";
+          const t = mapToday.get(ci);
+          const realY = Number(getField(y, balanceAliases) || 0);
+          const endY = String(getField(y, addressAliases) || 'N/A');
+          const desc = String(getField(y, descAliases) || 'Item sem descrição');
 
-          if (endY !== endT && diff === 0) {
-            statusString = "MOVIMENTAÇÃO LOGÍSTICA (MESMO SALDO)";
-            colorString = "bg-blue-50 text-blue-700";
-            type = "MOVE";
-            sMove++;
-          } else if (endY !== endT && diff !== 0) {
-            statusString = `RELOCAÇÃO + AJUSTE (${diff > 0 ? '+' : ''}${diff} PÇ)`;
-            colorString = "bg-indigo-50 text-indigo-700";
-            type = "MIXED";
-            sMove++;
-          } else if (diff < 0) {
-            const isCritical = (realT === 0);
-            statusString = isCritical ? "SAÍDA TOTAL / ZEROU" : `SAÍDA PARCIAL: ${Math.abs(diff)} PÇ`;
-            colorString = isCritical ? "bg-orange-100 text-orange-900" : "bg-orange-50 text-orange-700";
-            type = isCritical ? "STOCKOUT" : "PICKING";
-          } else if (diff > 0) {
-            statusString = `ENTRADA / ABASTECIMENTO: +${diff} PÇ`;
-            colorString = "bg-emerald-50 text-emerald-700";
-            type = "REPLENISH";
-          }
-
-          if (endY !== endT || diff !== 0) {
+          if (!t) {
             report.push({ 
-              ci, desc, endY, endT, realY, realT, diff, 
-              status: statusString, 
-              color: colorString,
-              type: type
+              ci, desc, endY, endT: 'ZERADO / REMOVIDO', 
+              realY, realT: 0, diff: -realY, 
+              status: 'ESTOQUE ZERADO NO SISTEMA', 
+              type: 'CRITICAL',
+              color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
             });
+            sOut++;
+          } else {
+            const realT = Number(getField(t, balanceAliases) || 0);
+            const endT = String(getField(t, addressAliases) || 'N/A');
+            const diff = realT - realY;
+            
+            let statusString = "OK";
+            let colorString = "";
+            let type = "NORMAL";
+
+            if (endY !== endT && diff === 0) {
+              statusString = "RELOCAÇÃO LOGÍSTICA (MESMO SALDO)";
+              colorString = "bg-blue-50 text-blue-700";
+              type = "MOVE";
+              sMove++;
+            } else if (endY !== endT && diff !== 0) {
+              statusString = `MOVIMENTAÇÃO + AJUSTE (${diff > 0 ? '+' : ''}${diff} PÇ)`;
+              colorString = "bg-indigo-50 text-indigo-700 border-l-4 border-l-indigo-400";
+              type = "MIXED";
+              sMove++;
+            } else if (diff < 0) {
+              const isCritical = (realT === 0);
+              statusString = isCritical ? "RUPTURA / ESTOQUE ZEROU" : `SAÍDA DE ESTOQUE: ${Math.abs(diff)} PÇ`;
+              colorString = isCritical ? "bg-orange-100 text-orange-900 border-l-4 border-l-orange-600" : "bg-orange-50 text-orange-700";
+              type = isCritical ? "STOCKOUT" : "PICKING";
+            } else if (diff > 0) {
+              statusString = `ENTRADA / REPOSIÇÃO: +${diff} PÇ`;
+              colorString = "bg-emerald-50 text-emerald-700";
+              type = "REPLENISH";
+            }
+
+            if (endY !== endT || diff !== 0) {
+              report.push({ 
+                ci, desc, endY, endT, realY, realT, diff, 
+                status: statusString, 
+                color: colorString,
+                type: type
+              });
+            }
           }
+        });
+
+        // Find NEW items
+        dataToday.forEach(t => {
+          const ci = String(getField(t, ciAliases) || '');
+          if (!ci || ci === "undefined") return;
+
+          const existsYesterday = dataYesterday.some(y => String(getField(y, ciAliases) || '') === ci);
+          if (!existsYesterday) {
+            const realT = Number(getField(t, balanceAliases) || 0);
+            const endT = String(getField(t, addressAliases) || 'N/A');
+            const desc = String(getField(t, descAliases) || 'Item novo');
+            report.push({ 
+              ci, desc, endY: 'NOVO NO ESTOQUE', endT, 
+              realY: 0, realT, diff: realT, 
+              status: 'ENTRADA NOVA (NÃO ESTAVA ONTEM)', 
+              type: 'NEW',
+              color: 'bg-emerald-100 text-emerald-800 font-bold border-l-4 border-l-emerald-600' 
+            });
+            sIn++;
+          }
+        });
+
+        if (report.length === 0) {
+          alert("✨ Nenhuma divergência detectada! Tudo em conformidade.");
+        } else {
+          setInventoryReport(report);
+          setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
         }
-      });
-
-      // Find NEW items
-      dataToday.forEach(t => {
-        const ci = String(t['CI'] || t['ci'] || '');
-        if (!ci) return;
-
-        const existsYesterday = dataYesterday.some(y => String(y['CI'] || y['ci'] || '') === ci);
-        if (!existsYesterday) {
-          const realT = Number(t['Real'] || t['real'] || t['REAL'] || 0);
-          const endT = String(t['Endereço'] || t['endereço'] || t['endereco'] || t['ENDEREÇO'] || '');
-          const desc = String(t['Descrição'] || t['descrição'] || t['DESCRIÇÃO'] || '');
-          report.push({ 
-            ci, desc, endY: 'NOVO', endT, 
-            realY: 0, realT, diff: realT, 
-            status: 'ENTRADA NOVA', color: 'bg-emerald-100 text-emerald-800 font-bold' 
-          });
-          sIn++;
-        }
-      });
-
-      setInventoryReport(report);
-      setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
-      setIsProcessing(false);
+      } catch (err) {
+        console.error("Erro fatal no processamento:", err);
+        alert("Erro ao processar as planilhas. Certifique-se de que os dados estão na primeira aba do Excel.");
+      } finally {
+        setIsProcessing(false);
+      }
     }, 800);
   };
+
 
   const exportInventoryExcel = () => {
     if (!inventoryReport.length) return;
@@ -2045,6 +2097,18 @@ export default function App() {
                         {fileNames.yesterday || 'Arraste a planilha de ontem'}
                       </span>
                     </label>
+                    {columnMaps.yesterday && (
+                      <div className="mt-4 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-center gap-4 animate-in slide-in-from-top-2">
+                        <div className="flex -space-x-1">
+                          {['ci', 'balance', 'address'].map(k => (
+                            <div key={k} className={`w-2 h-2 rounded-full ${columnMaps.yesterday[k] ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">
+                          Mapeamento: {columnMaps.yesterday.ci || '?'} | {columnMaps.yesterday.balance || '?'} | {columnMaps.yesterday.address || '?'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Today Upload */}
@@ -2062,6 +2126,18 @@ export default function App() {
                         {fileNames.today || 'Arraste a planilha de hoje'}
                       </span>
                     </label>
+                    {columnMaps.today && (
+                      <div className="mt-4 p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 flex items-center gap-4 animate-in slide-in-from-top-2">
+                         <div className="flex -space-x-1">
+                          {['ci', 'balance', 'address'].map(k => (
+                            <div key={k} className={`w-2 h-2 rounded-full ${columnMaps.today[k] ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[9px] font-black text-emerald-900 uppercase tracking-widest">
+                          Mapeamento: {columnMaps.today.ci || '?'} | {columnMaps.today.balance || '?'} | {columnMaps.today.address || '?'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2083,6 +2159,24 @@ export default function App() {
 
                 {inventoryReport.length > 0 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-1.5 bg-emerald-600 rounded-full" />
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Resumo Operacional</span>
+                        </div>
+                        <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Inventário Diário Concluído</h3>
+                        <p className="text-xs font-bold text-slate-500 max-w-lg">
+                          O sistema analisou os fluxos e identificou <span className="text-emerald-700">{inventoryReport.length} divergências</span> que requerem atenção ou registros no seu sistema principal.
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 text-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Acuracidade Estimada</p>
+                        <p className="text-3xl font-black text-blue-900">
+                          {inventoryStats.total > 0 ? Math.max(0, 100 - (inventoryReport.length / inventoryStats.total * 100)).toFixed(1) : '100'}%
+                        </p>
+                      </div>
+                    </div>
                     {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400">
