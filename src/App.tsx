@@ -198,8 +198,12 @@ export default function App() {
       setMetas(envData.metas);
       setData({ atual: envData.atual });
     }
+    // individual environment pickers default to simulator when selected
+    if (selectedEnv && selectedEnv !== 'geral' && activeTab === 'dashboard') {
+      setActiveTab('calculadora');
+    }
     setIsLoaded(true);
-  }, [selectedEnv, selectedMonth, selectedYear]);
+  }, [selectedEnv]);
 
   useEffect(() => {
     // Splash screen animation delay
@@ -487,25 +491,35 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-h-[60vh] md:max-h-none overflow-y-auto md:overflow-visible p-2">
                 {[
-                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.' },
-                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.' },
-                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.' }
+                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.', maintenance: false },
+                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.', maintenance: false },
+                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.', maintenance: true }
                 ].map(env => (
                   <button
                     key={env.id}
-                    onClick={() => setSelectedEnv(env.id as Environment)}
-                    className="group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent hover:border-blue-900 shadow-lg hover:shadow-2xl transition-all duration-300 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0"
+                    onClick={() => {
+                        if (env.maintenance) return;
+                        setSelectedEnv(env.id as Environment);
+                        setActiveTab('calculadora');
+                    }}
+                    disabled={env.maintenance}
+                    className={`group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent ${env.maintenance ? 'opacity-60 grayscale cursor-not-allowed' : 'hover:border-blue-900 shadow-lg hover:shadow-2xl cursor-pointer'} transition-all duration-300 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0`}
                   >
-                    <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 group-hover:bg-blue-50 transition-colors" />
-                    <div className={`${env.color} w-12 sm:w-16 h-12 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 group-hover:scale-110 transition-transform`}>
+                    <div className={`absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 ${env.maintenance ? '' : 'group-hover:bg-blue-50'} rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 transition-colors`} />
+                    <div className={`${env.color} w-12 sm:w-16 h-12 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 ${env.maintenance ? '' : 'group-hover:scale-110'} transition-transform`}>
                       <env.icon size={24} className="sm:size-[30px]" />
                     </div>
                     <div className="relative z-10">
-                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">{env.label}</h3>
-                      <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1.5 sm:mt-2 leading-relaxed">{env.description}</p>
+                      <h3 className={`text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight ${env.maintenance ? 'line-through text-slate-400' : ''}`}>{env.label}</h3>
+                      {env.maintenance && (
+                        <p className="text-red-700 text-[10px] sm:text-xs font-black uppercase tracking-widest mt-1 animate-pulse">Em Manutenção</p>
+                      )}
+                      <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1.5 sm:mt-2 leading-relaxed opacity-60">
+                        {env.maintenance ? 'Ambiente restrito: Em manutenção.' : 'Apenas Simulador de Demanda disponível.'}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2 text-blue-900 font-bold uppercase tracking-widest text-[9px] sm:text-[10px] mt-2 sm:mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Acessar agora <Check size={14} />
+                    <div className={`flex items-center gap-2 ${env.maintenance ? 'text-slate-400' : 'text-blue-900'} font-bold uppercase tracking-widest text-[9px] sm:text-[10px] mt-2 sm:mt-4 ${env.maintenance ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                      {env.maintenance ? 'Indisponível' : 'Simular Demanda'} <Check size={14} />
                     </div>
                   </button>
                 ))}
@@ -577,22 +591,24 @@ export default function App() {
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex items-center gap-1">
                   {[
-                    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                    { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
-                    { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
-                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
+                    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, maintenance: true },
+                    { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral', maintenance: true },
+                    { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral', maintenance: true },
+                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral', maintenance: false }
                   ].filter(item => !item.hidden).map(item => (
                     <button 
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => !item.maintenance && setActiveTab(item.id)}
+                      disabled={item.maintenance}
                       className={`flex items-center gap-2 px-6 py-4 rounded-xl text-base font-bold transition-all duration-300 group ${
                         activeTab === item.id 
                         ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 shadow-inner' 
                         : 'text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent'
-                      }`}
+                      } ${item.maintenance ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
                     >
                       <item.icon size={20} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
-                      <span className="tracking-wide uppercase">{item.label}</span>
+                      <span className={`tracking-wide uppercase ${item.maintenance ? 'line-through' : ''}`}>{item.label}</span>
+                      {item.maintenance && <span className="text-[9px] font-black bg-red-900/50 text-red-100 px-1.5 py-0.5 rounded ml-1 animate-pulse">OFF</span>}
                     </button>
                   ))}
                 </nav>
@@ -617,22 +633,24 @@ export default function App() {
                 >
                   <div className="px-4 py-6 space-y-2">
                     {[
-                      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                      { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' },
-                      { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' },
-                      { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' }
+                      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, maintenance: true },
+                      { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral', maintenance: true },
+                      { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral', maintenance: true },
+                      { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral', maintenance: false }
                     ].filter(item => !item.hidden).map(item => (
                       <button 
                         key={item.id}
-                        onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                        onClick={() => { if(!item.maintenance) { setActiveTab(item.id); setIsMobileMenuOpen(false); } }}
+                        disabled={item.maintenance}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all ${
                           activeTab === item.id 
                           ? 'bg-blue-900 text-white' 
                           : 'text-slate-400 hover:bg-slate-800'
-                        }`}
+                        } ${item.maintenance ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
                       >
                         <item.icon size={20} />
-                        <span className="uppercase tracking-widest">{item.label}</span>
+                        <span className={`uppercase tracking-widest ${item.maintenance ? 'line-through' : ''}`}>{item.label}</span>
+                        {item.maintenance && <span className="text-[10px] font-black text-red-500">MANT.</span>}
                       </button>
                     ))}
                     <div className="pt-4 mt-2 border-t border-slate-800">
@@ -672,9 +690,10 @@ export default function App() {
               </div>
               <div className="flex items-center gap-3 no-print bg-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-auto justify-between sm:justify-start">
                 <select 
-                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600 appearance-none"
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-default text-slate-400 appearance-none pointer-events-none"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  disabled
                 >
                   {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
                     <option key={m} value={i} className="text-slate-900">{m}</option>
@@ -682,9 +701,10 @@ export default function App() {
                 </select>
                 <div className="w-px h-6 bg-slate-200" />
                 <select 
-                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600 appearance-none"
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-black uppercase tracking-widest outline-none cursor-default text-slate-400 appearance-none pointer-events-none"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  disabled
                 >
                   {[2024, 2025, 2026, 2027].map(y => (
                     <option key={y} value={y} className="text-slate-900">{y}</option>
@@ -719,22 +739,22 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 print:space-y-8 print:animate-none">
                 {/* Date Filter Bar */}
-                <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-fit overflow-x-auto">
+                <div className="flex flex-wrap items-center gap-3 no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full lg:w-fit overflow-x-auto opacity-70 pointer-events-none">
                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100 flex-shrink-0">
                      <button 
-                       onClick={() => setDashboardDateFilter('semana')}
+                       disabled
                        className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Semana
                      </button>
                      <button 
-                       onClick={() => setDashboardDateFilter('mes')}
+                       disabled
                        className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Mês
                      </button>
                      <button 
-                       onClick={() => setDashboardDateFilter('ano')}
+                       disabled
                        className={`px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg text-[11px] sm:text-sm font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
                      >
                        Ano
@@ -745,7 +765,7 @@ export default function App() {
                      {generateWeeklyStructure().map(dia => (
                        <button
                          key={dia.id}
-                         onClick={() => setDashboardDateFilter(dia.id)}
+                         disabled
                          className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all min-w-[50px] sm:min-w-[60px] flex-shrink-0 ${dashboardDateFilter === dia.id ? 'bg-blue-900 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:bg-slate-50'}`}
                        >
                          {dia.dia.substring(0, 3)}
@@ -811,8 +831,8 @@ export default function App() {
                                 <input 
                                   type="number"
                                   value={manualGlobalHC !== null ? manualGlobalHC : stats.mediaHeadcountTotal}
-                                  onChange={(e) => setManualGlobalHC(e.target.value === '' ? null : Number(e.target.value))}
-                                  className="w-20 sm:w-28 text-3xl sm:text-4xl font-black text-blue-900 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none shadow-inner transition-all"
+                                  disabled
+                                  className="w-20 sm:w-28 text-3xl sm:text-4xl font-black text-slate-400 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100 outline-none shadow-inner transition-all cursor-not-allowed opacity-50"
                                   placeholder="0"
                                 />
                               </div>
@@ -820,40 +840,40 @@ export default function App() {
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
-                               <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                               <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50 opacity-70">
                                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Capacidade Meta (Sum)</p>
-                                 <p className="text-lg font-black text-blue-900">
+                                 <p className="text-lg font-black text-blue-900/50">
                                    {(stats.aggregateVolumeMeta || 0).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
-                               <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/50">
+                               <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/50 opacity-70">
                                  <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Real Mês</p>
-                                 <p className="text-lg font-black text-red-900">
+                                 <p className="text-lg font-black text-red-900/50">
                                    {(stats.monthlyReal || 0).toLocaleString()}
                                    <span className="text-[10px] ml-1">PÇS</span>
                                  </p>
                                </div>
                             </div>
 
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between opacity-50 pointer-events-none">
                               <div className="flex flex-col">
                                 <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Jornada</span>
                                 <div className="flex items-center gap-2">
                                   <input 
                                     type="number"
                                     value={manualGlobalJornada}
-                                    onChange={(e) => setManualGlobalJornada(Number(e.target.value))}
-                                    className="w-12 sm:w-16 text-sm sm:text-lg font-black text-slate-600 bg-slate-100 rounded-lg px-2 sm:px-3 py-1 border-none focus:ring-2 focus:ring-blue-500 outline-none"
+                                    disabled
+                                    className="w-12 sm:w-16 text-sm sm:text-lg font-black text-slate-400 bg-slate-100 rounded-lg px-2 sm:px-3 py-1 border-none outline-none cursor-not-allowed"
                                   />
                                   <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">H/Dia</span>
                                 </div>
                               </div>
                               
                               <button 
-                                onClick={() => { setManualGlobalHC(null); setManualGlobalJornada(9); }}
-                                className="p-1 sm:p-2 text-slate-300 hover:text-blue-600 transition-colors"
-                                title="Resetar para real"
+                                disabled
+                                className="p-1 sm:p-2 text-slate-200 cursor-not-allowed"
+                                title="Inativo"
                               >
                                 <Settings2 size={16} />
                               </button>
@@ -1007,21 +1027,21 @@ export default function App() {
                            <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Cenário Consolidado</h3>
                            <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest print:text-slate-500">Projeção de Performance Global</p>
                          </div>
-                         <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10 no-print">
+                         <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/10 no-print opacity-50 pointer-events-none">
                             <select 
-                              className="bg-transparent text-[10px] font-black uppercase text-slate-300 outline-none cursor-pointer"
+                              className="bg-transparent text-[10px] font-black uppercase text-slate-500 outline-none cursor-default"
                               value={selectedMonth}
-                              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                              disabled
                             >
                               {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, i) => (
                                 <option key={m} value={i} className="bg-slate-900">{m}</option>
                               ))}
                             </select>
-                            <span className="text-white/20">|</span>
+                            <span className="text-white/10">|</span>
                             <select 
-                              className="bg-transparent text-[10px] font-black uppercase text-slate-300 outline-none cursor-pointer"
+                              className="bg-transparent text-[10px] font-black uppercase text-slate-500 outline-none cursor-default"
                               value={selectedYear}
-                              onChange={(e) => setSelectedYear(Number(e.target.value))}
+                              disabled
                             >
                               {[2024, 2025, 2026, 2027].map(y => (
                                 <option key={y} value={y} className="bg-slate-900">{y}</option>
@@ -1358,18 +1378,20 @@ export default function App() {
                       <span className="text-[10px] font-black uppercase tracking-widest">Base de Dados</span>
                     </div>
                     <select 
-                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none cursor-default opacity-50"
                       value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      disabled
+                      readOnly
                     >
                       {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
                         <option key={m} value={i}>{m}</option>
                       ))}
                     </select>
                     <select 
-                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none cursor-default opacity-50"
                       value={selectedYear}
-                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      disabled
+                      readOnly
                     >
                       {[2024, 2025, 2026, 2027].map(y => (
                         <option key={y} value={y}>{y}</option>
@@ -1377,21 +1399,21 @@ export default function App() {
                     </select>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
+                  <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit opacity-50 pointer-events-none">
                     <button 
-                      onClick={() => setDashboardDateFilter('semana')}
+                      disabled
                       className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'semana' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
                     >
                       Semana
                     </button>
                     <button 
-                      onClick={() => setDashboardDateFilter('mes')}
+                      disabled
                       className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'mes' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
                     >
                       Mês
                     </button>
                     <button 
-                      onClick={() => setDashboardDateFilter('ano')}
+                      disabled
                       className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dashboardDateFilter === 'ano' ? 'bg-blue-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
                     >
                       Ano
@@ -1400,7 +1422,7 @@ export default function App() {
                     <select
                       className={`bg-transparent text-[10px] font-black uppercase tracking-widest outline-none px-2 py-2 rounded-lg transition-all ${!['semana', 'mes', 'ano'].includes(dashboardDateFilter) ? 'text-blue-900 bg-blue-50' : 'text-slate-400'}`}
                       value={!['semana', 'mes', 'ano'].includes(dashboardDateFilter) ? dashboardDateFilter : ""}
-                      onChange={(e) => setDashboardDateFilter(e.target.value)}
+                      disabled
                     >
                       <option value="" disabled>Selecione o Dia</option>
                       {data.atual.map((dia) => {
@@ -1587,18 +1609,20 @@ export default function App() {
                               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Volume (PÇS)</label>
                               <input 
                                 type="number" 
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-400 outline-none transition-all text-lg cursor-not-allowed"
                                 value={item.pecas || ''} 
-                                onChange={(e) => updateDataField(item.id, 'pecas', e.target.value)} 
+                                disabled
+                                readOnly
                               />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-xs font-bold text-blue-400 uppercase tracking-widest ml-1">Real Movim.</label>
                               <input 
                                 type="number" 
-                                className="w-full p-4 bg-blue-50/30 border border-blue-100 rounded-xl font-black text-center text-blue-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-blue-50/10 border border-blue-50 rounded-xl font-black text-center text-blue-300 outline-none transition-all text-lg cursor-not-allowed"
                                 value={item.real || ''} 
-                                onChange={(e) => updateDataField(item.id, 'real', e.target.value)} 
+                                disabled
+                                readOnly
                               />
                             </div>
                           </div>
@@ -1609,14 +1633,15 @@ export default function App() {
                               <input 
                                 type="number" 
                                 step="0.5"
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-700 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-400 outline-none transition-all text-lg cursor-not-allowed"
                                 value={item.jornada || ''} 
-                                onChange={(e) => updateDataField(item.id, 'jornada', e.target.value)} 
+                                disabled
+                                readOnly
                               />
                             </div>
                             <div className="flex flex-col gap-1.5">
                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 text-[10px]">Prod. Real</label>
-                               <div className="flex-1 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center font-black text-slate-400 text-lg">
+                               <div className="flex-1 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center font-black text-slate-300 text-lg">
                                  {calculateProdReal(item.real || item.pecas, (Number(item.conferentes) || 0) + (Number(item.auxiliares) || 0), item.jornada || 9)}
                                </div>
                             </div>
@@ -1629,12 +1654,13 @@ export default function App() {
                                 <div className="relative">
                                   <input 
                                     type="number" 
-                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-blue-900 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
+                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-blue-300 outline-none transition-all text-lg cursor-not-allowed"
                                     value={item.conferentes || ''} 
-                                    onChange={(e) => updateDataField(item.id, 'conferentes', e.target.value)} 
+                                    disabled
+                                    readOnly
                                   />
                                   {hasData && (
-                                    <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingCOk ? 'bg-blue-900 text-white' : 'bg-red-800 text-white animate-pulse'}`}>
+                                    <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingCOk ? 'bg-blue-300 text-white' : 'bg-red-300 text-white'}`}>
                                       {diffC > 0 ? `+${diffC}` : diffC < 0 ? diffC : 'OK'}
                                     </div>
                                   )}
@@ -1646,9 +1672,10 @@ export default function App() {
                               <div className="relative">
                                 <input 
                                   type="number" 
-                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-600 focus:bg-white focus:border-blue-500 outline-none transition-all text-lg"
+                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl font-black text-center text-slate-300 outline-none transition-all text-lg cursor-not-allowed"
                                   value={item.auxiliares || ''} 
-                                  onChange={(e) => updateDataField(item.id, 'auxiliares', e.target.value)} 
+                                  disabled
+                                  readOnly
                                 />
                                 {hasData && (
                                   <div className={`absolute -top-2 -right-1 px-2 py-1 rounded text-xs font-black uppercase ${staffingAOk ? 'bg-blue-600 text-white' : 'bg-red-800 text-white animate-pulse'}`}>
@@ -1853,9 +1880,10 @@ export default function App() {
                         <label className="text-[10px] sm:text-xs font-black uppercase text-blue-400 tracking-widest leading-none block h-3">Meta Vol.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-slate-600 text-center outline-none cursor-not-allowed opacity-50" 
                           value={metas.VOLUME || ''} 
-                          onChange={(e) => setMetas({...metas, VOLUME: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                          disabled
+                          readOnly
                         />
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / DIA</p>
                       </div>
@@ -1864,9 +1892,10 @@ export default function App() {
                         <input 
                           type="number" 
                           step="0.5"
-                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-slate-600 text-center outline-none cursor-not-allowed opacity-50" 
                           value={metas.JORNADA || ''} 
-                          onChange={(e) => setMetas({...metas, JORNADA: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                          disabled
+                          readOnly
                         />
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">H / DIA</p>
                       </div>
@@ -1875,9 +1904,10 @@ export default function App() {
                         <label className="text-[10px] sm:text-xs font-black uppercase text-blue-400 tracking-widest leading-none block h-3">Meta {confLabel.substring(0, 4)}.</label>
                         <input 
                           type="number" 
-                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-blue-500 transition-all shadow-inner" 
+                          className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-slate-600 text-center outline-none cursor-not-allowed opacity-50" 
                           value={metas.CONFERENTE || ''} 
-                          onChange={(e) => setMetas({...metas, CONFERENTE: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                          disabled
+                          readOnly
                         />
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / H</p>
                       </div>
@@ -1886,9 +1916,10 @@ export default function App() {
                       <label className="text-[10px] sm:text-xs font-black uppercase text-red-400 tracking-widest leading-none block h-3">Meta Aux.</label>
                       <input 
                         type="number" 
-                        className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-white text-center outline-none focus:border-red-500 transition-all shadow-inner" 
+                        className="w-full bg-slate-900 border border-slate-800 p-3 sm:p-5 rounded-xl text-xl sm:text-3xl font-black text-slate-600 text-center outline-none cursor-not-allowed opacity-50" 
                         value={metas.AUXILIAR || ''} 
-                        onChange={(e) => setMetas({...metas, AUXILIAR: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                        disabled
+                        readOnly
                       />
                       <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 leading-tight">PÇ / H</p>
                     </div>
