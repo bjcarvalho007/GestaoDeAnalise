@@ -38,7 +38,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
-type Environment = 'recebimento' | 'separacao' | 'geral';
+type Environment = 'recebimento' | 'separacao' | 'geral' | 'inventario';
+import * as XLSX from 'xlsx';
+import { FileUp, Download, Package, Move, LogOut, LogIn, Search, Filter } from 'lucide-react';
 
 interface DayData {
   id: string;
@@ -147,6 +149,143 @@ export default function App() {
   const [filterMode, setFilterMode] = useState<'todos' | 'ok' | 'pendente'>('todos');
   const [dashboardDateFilter, setDashboardDateFilter] = useState<'semana' | 'mes' | 'ano' | string>(getCurrentDayId());
 
+  // --- Inventory Module States ---
+  const [dataYesterday, setDataYesterday] = useState<any[]>([]);
+  const [dataToday, setDataToday] = useState<any[]>([]);
+  const [inventoryReport, setInventoryReport] = useState<any[]>([]);
+  const [inventoryStats, setInventoryStats] = useState({ total: 0, out: 0, move: 0, in: 0 });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [fileNames, setFileNames] = useState({ yesterday: '', today: '' });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'yesterday' | 'today') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileNames(prev => ({ ...prev, [type]: file.name }));
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(sheetName ? workbook.Sheets[sheetName] : {});
+        if (type === 'yesterday') setDataYesterday(json);
+        else setDataToday(json);
+      } catch (error) {
+        console.error("Erro ao ler arquivo:", error);
+        alert("Erro ao processar o arquivo Excel. Verifique o formato.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const processInventory = () => {
+    if (!dataYesterday.length || !dataToday.length) {
+      alert("Por favor, selecione ambos os arquivos (Ontem e Hoje) primeiro.");
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    // Simulate processing delay for "intelligent" feel
+    setTimeout(() => {
+      const report: any[] = [];
+      const mapToday = new Map();
+      
+      // Map Today by CI
+      dataToday.forEach(row => {
+        const key = String(row['CI'] || row['ci'] || '');
+        if (key) mapToday.set(key, row);
+      });
+
+      let sOut = 0, sMove = 0, sIn = 0;
+
+      // Compare Yesterday with Today
+      dataYesterday.forEach(y => {
+        const ci = String(y['CI'] || y['ci'] || '');
+        if (!ci) return;
+
+        const t = mapToday.get(ci);
+        const realY = Number(y['Real'] || y['real'] || 0);
+        const endY = String(y['Endereço'] || y['endereço'] || y['endereco'] || '');
+        const desc = String(y['Descrição'] || y['descrição'] || '');
+
+        if (!t) {
+          report.push({ 
+            ci, desc, endY, endT: '---', 
+            realY, realT: 0, diff: -realY, 
+            status: 'ITEM REMOVIDO', color: 'bg-red-50 text-red-700 font-bold' 
+          });
+          sOut++;
+        } else {
+          const realT = Number(t['Real'] || t['real'] || 0);
+          const endT = String(t['Endereço'] || t['endereço'] || t['endereco'] || '');
+          const diff = realT - realY;
+          
+          let statusString = "OK";
+          let colorString = "";
+
+          if (endY !== endT) {
+            statusString = "MUDOU ENDEREÇO";
+            colorString = "bg-blue-50 text-blue-700";
+            sMove++;
+          } else if (diff < 0) {
+            statusString = `SAÍDA: ${Math.abs(diff)} PEÇAS`;
+            colorString = "bg-orange-50 text-orange-700";
+          } else if (diff > 0) {
+            statusString = `ENTRADA: ${diff} PEÇAS`;
+            colorString = "bg-green-50 text-green-700";
+          }
+
+          if (endY !== endT || diff !== 0) {
+            report.push({ ci, desc, endY, endT, realY, realT, diff, status: statusString, color: colorString });
+          }
+        }
+      });
+
+      // Find NEW items
+      dataToday.forEach(t => {
+        const ci = String(t['CI'] || t['ci'] || '');
+        if (!ci) return;
+
+        const existsYesterday = dataYesterday.some(y => String(y['CI'] || y['ci'] || '') === ci);
+        if (!existsYesterday) {
+          const realT = Number(t['Real'] || t['real'] || t['REAL'] || 0);
+          const endT = String(t['Endereço'] || t['endereço'] || t['endereco'] || t['ENDEREÇO'] || '');
+          const desc = String(t['Descrição'] || t['descrição'] || t['DESCRIÇÃO'] || '');
+          report.push({ 
+            ci, desc, endY: 'NOVO', endT, 
+            realY: 0, realT, diff: realT, 
+            status: 'ENTRADA NOVA', color: 'bg-emerald-100 text-emerald-800 font-bold' 
+          });
+          sIn++;
+        }
+      });
+
+      setInventoryReport(report);
+      setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
+      setIsProcessing(false);
+    }, 800);
+  };
+
+  const exportInventoryExcel = () => {
+    if (!inventoryReport.length) return;
+
+    const ws = XLSX.utils.json_to_sheet(inventoryReport.map(r => ({
+      'CI': r.ci,
+      'Descrição': r.desc,
+      'Endereço Original': r.endY,
+      'Endereço Atual': r.endT,
+      'Saldo Anterior': r.realY,
+      'Saldo Atual': r.realT,
+      'Diferença': r.diff,
+      'Status da Movimentação': r.status
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Divergencias");
+    XLSX.writeFile(wb, `Relatorio_Movimentacao_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.xlsx`);
+  };
+
   useEffect(() => {
     localStorage.setItem('logistics_manual_global_hc', JSON.stringify(manualGlobalHC));
   }, [manualGlobalHC]);
@@ -160,7 +299,7 @@ export default function App() {
     setIsLoaded(false);
     // Global sync function to fetch all data from localStorage
     const syncAllData = () => {
-      const environments: ('recebimento' | 'separacao')[] = ['recebimento', 'separacao'];
+      const environments: ('recebimento' | 'separacao' | 'inventario')[] = ['recebimento', 'separacao', 'inventario'];
       const combined: Record<string, { atual: DayData[], metas: Metas }> = {};
       
       environments.forEach(env => {
@@ -493,6 +632,7 @@ export default function App() {
                 {[
                   { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.', maintenance: false },
                   { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.', maintenance: false },
+                  { id: 'inventario', label: 'Inventário Pro', icon: Package, color: 'bg-emerald-800', description: 'Controle inteligente de movimentação, saldo e divergências.', maintenance: false },
                   { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.', maintenance: true }
                 ].map(env => (
                   <button
@@ -500,7 +640,11 @@ export default function App() {
                     onClick={() => {
                         if (env.maintenance) return;
                         setSelectedEnv(env.id as Environment);
-                        setActiveTab('calculadora');
+                        if (env.id === 'inventario') {
+                            setActiveTab('inventory_main');
+                        } else {
+                            setActiveTab('calculadora');
+                        }
                     }}
                     disabled={env.maintenance}
                     className={`group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent ${env.maintenance ? 'opacity-60 grayscale cursor-not-allowed' : 'hover:border-blue-900 shadow-lg hover:shadow-2xl cursor-pointer'} transition-all duration-300 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0`}
@@ -592,9 +736,10 @@ export default function App() {
                 <nav className="hidden md:flex items-center gap-1">
                   {[
                     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, maintenance: true },
-                    { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral', maintenance: true },
-                    { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral', maintenance: true },
-                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral', maintenance: false }
+                    { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: true },
+                    { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: true },
+                    { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: false },
+                    { id: 'inventory_main', label: 'Analytics', icon: Activity, hidden: selectedEnv !== 'inventario' }
                   ].filter(item => !item.hidden).map(item => (
                     <button 
                       key={item.id}
@@ -608,7 +753,7 @@ export default function App() {
                     >
                       <item.icon size={20} className={`${activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
                       <span className={`tracking-wide uppercase ${item.maintenance ? 'line-through' : ''}`}>{item.label}</span>
-                      {item.maintenance && <span className="text-[9px] font-black bg-red-900/50 text-red-100 px-1.5 py-0.5 rounded ml-1 animate-pulse">OFF</span>}
+                      {item.maintenance && <span className="text-[8px] font-black bg-red-900 text-white px-2 py-0.5 rounded ml-2 shadow-lg">EM MANUTENÇÃO</span>}
                     </button>
                   ))}
                 </nav>
@@ -634,9 +779,10 @@ export default function App() {
                   <div className="px-4 py-6 space-y-2">
                     {[
                       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, maintenance: true },
-                      { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral', maintenance: true },
-                      { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral', maintenance: true },
-                      { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral', maintenance: false }
+                      { id: 'input', label: 'Gestão Operacional', icon: Zap, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: true },
+                      { id: 'meta', label: 'Configurações', icon: Target, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: true },
+                      { id: 'calculadora', label: 'Simular demanda', icon: Calculator, hidden: selectedEnv === 'geral' || selectedEnv === 'inventario', maintenance: false },
+                      { id: 'inventory_main', label: 'Analytics', icon: Activity, hidden: selectedEnv !== 'inventario' }
                     ].filter(item => !item.hidden).map(item => (
                       <button 
                         key={item.id}
@@ -649,8 +795,8 @@ export default function App() {
                         } ${item.maintenance ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
                       >
                         <item.icon size={20} />
-                        <span className={`uppercase tracking-widest ${item.maintenance ? 'line-through' : ''}`}>{item.label}</span>
-                        {item.maintenance && <span className="text-[10px] font-black text-red-500">MANT.</span>}
+                        <span className={`uppercase tracking-widest ${item.maintenance ? 'line-through text-slate-500' : ''}`}>{item.label}</span>
+                        {item.maintenance && <span className="text-[8px] font-black bg-red-900 text-white px-2 py-0.5 rounded ml-auto">EM MANUTENÇÃO</span>}
                       </button>
                     ))}
                     <div className="pt-4 mt-2 border-t border-slate-800">
@@ -1860,6 +2006,147 @@ export default function App() {
                       </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* --- INVENTORY MODULE --- */}
+            {activeTab === 'inventory_main' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Yesterday Upload */}
+                  <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-2 h-6 bg-slate-300 rounded-full" />
+                      <h3 className="font-black text-slate-800 uppercase tracking-tight">Base Anterior (Ontem)</h3>
+                    </div>
+                    <label className="relative border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-emerald-50/10 active:scale-[0.98]">
+                      <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => handleFileUpload(e, 'yesterday')} />
+                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4 group-hover:text-emerald-500 group-hover:bg-emerald-50 transition-colors">
+                        <FileUp size={32} />
+                      </div>
+                      <span className="text-sm font-black text-slate-500 uppercase tracking-widest text-center px-4">
+                        {fileNames.yesterday || 'Arraste a planilha de ontem'}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Today Upload */}
+                  <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-2 h-6 bg-emerald-600 rounded-full" />
+                      <h3 className="font-black text-slate-800 uppercase tracking-tight">Base Atual (Hoje)</h3>
+                    </div>
+                    <label className="relative border-2 border-dashed border-slate-200 hover:border-emerald-600 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-emerald-50/20 active:scale-[0.98]">
+                      <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => handleFileUpload(e, 'today')} />
+                      <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-4 shadow-inner">
+                        <Download size={32} />
+                      </div>
+                      <span className="text-sm font-black text-slate-600 uppercase tracking-widest text-center px-4">
+                        {fileNames.today || 'Arraste a planilha de hoje'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Process Button */}
+                <div className="flex justify-center">
+                  <button 
+                    onClick={processInventory}
+                    disabled={isProcessing}
+                    className={`bg-emerald-800 hover:bg-emerald-900 text-white font-black py-5 px-16 rounded-[1.5rem] shadow-2xl transition-all flex items-center gap-4 group active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isProcessing ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Activity size={20} className="group-hover:rotate-12 transition-transform" />
+                    )}
+                    <span className="uppercase tracking-[0.2em]">{isProcessing ? 'Processando Dados...' : 'Gerar Relatório de Movimentação'}</span>
+                  </button>
+                </div>
+
+                {inventoryReport.length > 0 && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Itens Analisados</p>
+                        <p className="text-3xl font-black text-slate-800 tracking-tighter">{inventoryStats.total.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-red-500">
+                        <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Saídas Detectadas</p>
+                        <p className="text-3xl font-black text-red-600 tracking-tighter">{inventoryStats.out.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
+                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Muda Address</p>
+                        <p className="text-3xl font-black text-blue-600 tracking-tighter">{inventoryStats.move.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-600">
+                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Entradas Novas</p>
+                        <p className="text-3xl font-black text-emerald-600 tracking-tighter">{inventoryStats.in.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden group">
+                      <div className="px-8 py-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          <Search size={18} className="text-slate-400" />
+                          <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">Detalhamento de Movimentação Inteligente</h3>
+                        </div>
+                        <button 
+                          onClick={exportInventoryExcel}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/10 transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest"
+                        >
+                          <Download size={14} /> Exportar Excel
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto max-h-[600px] scrollbar-hide">
+                        <table className="w-full text-left border-collapse whitespace-nowrap">
+                          <thead className="sticky top-0 bg-slate-50 z-20 shadow-sm">
+                            <tr className="text-[10px] uppercase text-slate-400 border-b border-slate-100 font-black">
+                              <th className="px-8 py-5 tracking-widest">Endereço (Fluxo)</th>
+                              <th className="px-8 py-5 tracking-widest">CI</th>
+                              <th className="px-8 py-5 tracking-widest">Descrição</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Real (H-1)</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Real (H)</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Diferença</th>
+                              <th className="px-8 py-5 tracking-widest">Status / Inteligência</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-xs text-slate-600 font-bold">
+                            {inventoryReport.map((row, idx) => (
+                              <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${row.color}`}>
+                                <td className="px-8 py-5">
+                                  <div className="flex flex-col">
+                                    <span className="text-[9px] opacity-60 italic mb-1">De: {row.endY}</span>
+                                    <span className="font-black text-blue-900 flex items-center gap-1.5">
+                                      <Move size={10} /> Para: {row.endT}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-8 py-5 font-mono font-black text-slate-900 text-sm">{row.ci}</td>
+                                <td className="px-8 py-5">
+                                  <p className="truncate max-w-[200px] sm:max-w-xs">{row.desc}</p>
+                                </td>
+                                <td className="px-8 py-5 text-center opacity-40 font-black">{row.realY}</td>
+                                <td className="px-8 py-5 text-center font-black text-emerald-900 text-sm">{row.realT}</td>
+                                <td className={`px-8 py-5 text-center font-black text-sm ${row.diff < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                                  {row.diff > 0 ? `+${row.diff}` : row.diff}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${row.diff < 0 ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                                    <span className="text-[10px] uppercase font-black tracking-tighter">{row.status}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
