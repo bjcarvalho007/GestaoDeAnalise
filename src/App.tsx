@@ -214,7 +214,9 @@ export default function App() {
           report.push({ 
             ci, desc, endY, endT: '---', 
             realY, realT: 0, diff: -realY, 
-            status: 'ITEM REMOVIDO', color: 'bg-red-50 text-red-700 font-bold' 
+            status: 'ESTOQUE ZERADO / REMOVIDO', 
+            type: 'CRITICAL',
+            color: 'bg-red-50 text-red-700 font-black border-l-4 border-l-red-600' 
           });
           sOut++;
         } else {
@@ -224,21 +226,36 @@ export default function App() {
           
           let statusString = "OK";
           let colorString = "";
+          let type = "NORMAL";
 
-          if (endY !== endT) {
-            statusString = "MUDOU ENDEREÇO";
+          if (endY !== endT && diff === 0) {
+            statusString = "MOVIMENTAÇÃO LOGÍSTICA (MESMO SALDO)";
             colorString = "bg-blue-50 text-blue-700";
+            type = "MOVE";
+            sMove++;
+          } else if (endY !== endT && diff !== 0) {
+            statusString = `RELOCAÇÃO + AJUSTE (${diff > 0 ? '+' : ''}${diff} PÇ)`;
+            colorString = "bg-indigo-50 text-indigo-700";
+            type = "MIXED";
             sMove++;
           } else if (diff < 0) {
-            statusString = `SAÍDA: ${Math.abs(diff)} PEÇAS`;
-            colorString = "bg-orange-50 text-orange-700";
+            const isCritical = (realT === 0);
+            statusString = isCritical ? "SAÍDA TOTAL / ZEROU" : `SAÍDA PARCIAL: ${Math.abs(diff)} PÇ`;
+            colorString = isCritical ? "bg-orange-100 text-orange-900" : "bg-orange-50 text-orange-700";
+            type = isCritical ? "STOCKOUT" : "PICKING";
           } else if (diff > 0) {
-            statusString = `ENTRADA: ${diff} PEÇAS`;
-            colorString = "bg-green-50 text-green-700";
+            statusString = `ENTRADA / ABASTECIMENTO: +${diff} PÇ`;
+            colorString = "bg-emerald-50 text-emerald-700";
+            type = "REPLENISH";
           }
 
           if (endY !== endT || diff !== 0) {
-            report.push({ ci, desc, endY, endT, realY, realT, diff, status: statusString, color: colorString });
+            report.push({ 
+              ci, desc, endY, endT, realY, realT, diff, 
+              status: statusString, 
+              color: colorString,
+              type: type
+            });
           }
         }
       });
@@ -2089,9 +2106,12 @@ export default function App() {
                     {/* Table */}
                     <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden group">
                       <div className="px-8 py-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <Search size={18} className="text-slate-400" />
-                          <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">Detalhamento de Movimentação Inteligente</h3>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-3">
+                            <Search size={18} className="text-slate-400" />
+                            <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">MAPA DE DIVERGÊNCIAS OPERACIONAIS</h3>
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Sincronização entre {fileNames.yesterday} e {fileNames.today}</p>
                         </div>
                         <button 
                           onClick={exportInventoryExcel}
@@ -2100,43 +2120,57 @@ export default function App() {
                           <Download size={14} /> Exportar Excel
                         </button>
                       </div>
-                      <div className="overflow-x-auto max-h-[600px] scrollbar-hide">
+                      <div className="overflow-x-auto max-h-[650px] scrollbar-thin scrollbar-thumb-slate-200">
                         <table className="w-full text-left border-collapse whitespace-nowrap">
                           <thead className="sticky top-0 bg-slate-50 z-20 shadow-sm">
-                            <tr className="text-[10px] uppercase text-slate-400 border-b border-slate-100 font-black">
-                              <th className="px-8 py-5 tracking-widest">Endereço (Fluxo)</th>
-                              <th className="px-8 py-5 tracking-widest">CI</th>
-                              <th className="px-8 py-5 tracking-widest">Descrição</th>
-                              <th className="px-8 py-5 text-center tracking-widest">Real (H-1)</th>
-                              <th className="px-8 py-5 text-center tracking-widest">Real (H)</th>
-                              <th className="px-8 py-5 text-center tracking-widest">Diferença</th>
-                              <th className="px-8 py-5 tracking-widest">Status / Inteligência</th>
+                            <tr className="text-[10px] uppercase text-slate-500 border-b border-slate-100 font-black">
+                              <th className="px-8 py-5 tracking-widest">Análise de Fluxo (Endereço)</th>
+                              <th className="px-8 py-5 tracking-widest">Identificação (CI)</th>
+                              <th className="px-8 py-5 tracking-widest">Produto / Descrição</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Anterior</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Atual</th>
+                              <th className="px-8 py-5 text-center tracking-widest">Delta</th>
+                              <th className="px-8 py-5 tracking-widest">Inteligência Operacional</th>
                             </tr>
                           </thead>
                           <tbody className="text-xs text-slate-600 font-bold">
                             {inventoryReport.map((row, idx) => (
-                              <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${row.color}`}>
+                              <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/70 transition-colors ${row.color}`}>
                                 <td className="px-8 py-5">
-                                  <div className="flex flex-col">
-                                    <span className="text-[9px] opacity-60 italic mb-1">De: {row.endY}</span>
-                                    <span className="font-black text-blue-900 flex items-center gap-1.5">
-                                      <Move size={10} /> Para: {row.endT}
-                                    </span>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px] text-slate-500 font-black">DE</span>
+                                      <span className="text-slate-400 italic line-through">{row.endY}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="bg-blue-100 px-2 py-0.5 rounded text-[9px] text-blue-700 font-black">PARA</span>
+                                      <span className="font-black text-blue-900">{row.endT}</span>
+                                    </div>
                                   </div>
                                 </td>
-                                <td className="px-8 py-5 font-mono font-black text-slate-900 text-sm">{row.ci}</td>
+                                <td className="px-8 py-5 font-mono font-black text-slate-900 text-sm tracking-tighter">{row.ci}</td>
                                 <td className="px-8 py-5">
-                                  <p className="truncate max-w-[200px] sm:max-w-xs">{row.desc}</p>
+                                  <p className="truncate max-w-[200px] sm:max-w-xs uppercase leading-tight font-black">{row.desc}</p>
+                                  <span className="text-[9px] text-slate-400 font-bold">Referência Unitária</span>
                                 </td>
-                                <td className="px-8 py-5 text-center opacity-40 font-black">{row.realY}</td>
-                                <td className="px-8 py-5 text-center font-black text-emerald-900 text-sm">{row.realT}</td>
-                                <td className={`px-8 py-5 text-center font-black text-sm ${row.diff < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
-                                  {row.diff > 0 ? `+${row.diff}` : row.diff}
+                                <td className="px-8 py-5 text-center opacity-40 font-black text-sm">{row.realY}</td>
+                                <td className="px-8 py-5 text-center font-black text-emerald-900 text-sm underline decoration-emerald-200 decoration-2 underline-offset-4">{row.realT}</td>
+                                <td className={`px-8 py-5 text-center font-black text-base ${row.diff < 0 ? 'text-red-700' : 'text-emerald-700 font-black scale-110'}`}>
+                                  {row.diff > 0 ? `+${row.diff}` : row.diff === 0 ? '--' : row.diff}
                                 </td>
                                 <td className="px-8 py-5">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${row.diff < 0 ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                                    <span className="text-[10px] uppercase font-black tracking-tighter">{row.status}</span>
+                                  <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full shadow-sm animate-pulse ${
+                                        row.type === 'CRITICAL' || row.type === 'STOCKOUT' ? 'bg-red-600' : 
+                                        row.type === 'REPLENISH' ? 'bg-emerald-600' : 
+                                        'bg-blue-500'
+                                      }`} />
+                                      <span className="text-[10px] uppercase font-black tracking-tighter whitespace-normal leading-tight">{row.status}</span>
+                                    </div>
+                                    {(row.type === 'CRITICAL' || row.type === 'STOCKOUT') && (
+                                      <div className="bg-red-700 text-white text-[8px] font-black px-1.5 py-0.5 rounded w-fit animate-bounce">AÇÃO NECESSÁRIA</div>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
