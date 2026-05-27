@@ -40,6 +40,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // --- Types ---
 type Environment = 'recebimento' | 'separacao' | 'geral' | 'inventario';
 import * as XLSX from 'xlsx';
+import { getItem, setItem, clearAll } from './lib/db';
 import { FileUp, Download, Package, Move, LogOut, LogIn, Search, Filter } from 'lucide-react';
 
 interface DayData {
@@ -198,7 +199,6 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileNames(prev => ({ ...prev, [type]: file.name }));
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -230,7 +230,11 @@ export default function App() {
         }
 
         const mapping = detectColumns(json[0]);
-        setColumnMaps(prev => ({ ...prev, [type]: mapping }));
+        setColumnMaps(prev => {
+          const updated = { ...prev, [type]: mapping };
+          setItem('columnMaps', updated);
+          return updated;
+        });
 
         if (!mapping?.ci || !mapping?.address) {
           console.warn("Colunas não detectadas automaticamente:", mapping);
@@ -238,8 +242,19 @@ export default function App() {
           console.log(`Sucesso: Colunas mapeadas para ${type}`, mapping);
         }
 
-        if (type === 'yesterday') setDataYesterday(json);
-        else setDataToday(json);
+        if (type === 'yesterday') {
+          setDataYesterday(json);
+          setItem('dataYesterday', json);
+        } else {
+          setDataToday(json);
+          setItem('dataToday', json);
+        }
+
+        setFileNames(prev => {
+          const updated = { ...prev, [type]: file.name };
+          setItem('fileNames', updated);
+          return updated;
+        });
       } catch (error) {
         console.error("Erro ao ler arquivo:", error);
         alert("Erro ao processar o arquivo Excel. Verifique se o formato é suportado (.xlsx, .xls ou .csv).");
@@ -395,10 +410,19 @@ export default function App() {
 
         if (report.length === 0) {
           alert("✨ Planilhas sincronizadas! Nenhuma divergência detectada.");
+          setInventoryReport([]);
+          setItem('inventoryReport', []);
+          const blankStats = { total: dataToday.length, out: 0, move: 0, in: 0 };
+          setInventoryStats(blankStats);
+          setItem('inventoryStats', blankStats);
         } else {
           report.sort((a, b) => a.ci.localeCompare(b.ci));
           setInventoryReport(report);
-          setInventoryStats({ total: dataToday.length, out: sOut, move: sMove, in: sIn });
+          setItem('inventoryReport', report);
+          
+          const newStats = { total: dataToday.length, out: sOut, move: sMove, in: sIn };
+          setInventoryStats(newStats);
+          setItem('inventoryStats', newStats);
         }
       } catch (err) {
         console.error("Erro fatal:", err);
@@ -426,6 +450,53 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Divergencias");
     XLSX.writeFile(wb, `Relatorio_Movimentacao_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.xlsx`);
+  };
+
+  useEffect(() => {
+    async function loadSavedInventory() {
+      try {
+        const savedYesterday = await getItem('dataYesterday');
+        const savedToday = await getItem('dataToday');
+        const savedReport = await getItem('inventoryReport');
+        const savedStats = await getItem('inventoryStats');
+        const savedFileNames = await getItem('fileNames');
+        const savedColumnMaps = await getItem('columnMaps');
+
+        if (savedYesterday) setDataYesterday(savedYesterday);
+        if (savedToday) setDataToday(savedToday);
+        if (savedReport) setInventoryReport(savedReport);
+        if (savedStats) setInventoryStats(savedStats);
+        if (savedFileNames) setFileNames(savedFileNames);
+        if (savedColumnMaps) setColumnMaps(savedColumnMaps);
+        
+        console.log("Inventário carregado com sucesso do IndexedDB!");
+      } catch (err) {
+        console.error("Erro ao carregar dados do IndexedDB:", err);
+      }
+    }
+    loadSavedInventory();
+  }, []);
+
+  const clearInventoryData = async () => {
+    if (window.confirm("Deseja realmente limpar todos os relatórios e planilhas armazenados localmente? Isso liberará espaço na memória do navegador.")) {
+      setDataYesterday([]);
+      setDataToday([]);
+      setInventoryReport([]);
+      setInventoryStats({ total: 0, out: 0, move: 0, in: 0 });
+      setFileNames({ yesterday: '', today: '' });
+      setColumnMaps({ yesterday: null, today: null });
+      setSearchTerm('');
+      setStatusFilter('ALL');
+      setCurrentPage(1);
+
+      try {
+        await clearAll();
+        alert("✨ Memória local limpa com sucesso!");
+      } catch (err) {
+        console.error("Erro ao limpar IndexedDB:", err);
+        alert("Ocorreu um erro ao limpar o IndexedDB.");
+      }
+    }
   };
 
   useEffect(() => {
@@ -2154,6 +2225,28 @@ export default function App() {
             {/* --- INVENTORY MODULE --- */}
             {activeTab === 'inventory_main' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                {/* Header with DB persistence status & Clear Button */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Memória Local Ativa (IndexedDB)</span>
+                    </div>
+                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Análise de Movimentações (Divergências)</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">As planilhas e relatórios são salvos de forma ultra segura e persistem mesmo após fechar o navegador.</p>
+                  </div>
+                  <button
+                    onClick={clearInventoryData}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-[10px] font-black rounded-xl uppercase tracking-wider transition-all border border-red-100 cursor-pointer"
+                  >
+                    <X size={14} />
+                    Limpar Memória
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Yesterday Upload */}
                   <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group">
