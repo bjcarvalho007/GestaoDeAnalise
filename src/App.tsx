@@ -830,63 +830,70 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 bg-[#F1F5F9] flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 bg-[#F1F5F9] overflow-y-auto"
           >
-            <div className="max-w-4xl w-full text-center space-y-8 sm:space-y-12">
-              <div className="space-y-3 sm:space-y-4">
-                <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-blue-900 rounded-full mx-auto" />
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">
-                  Escolha o seu <span className="text-blue-900">Ambiente</span>
-                </h2>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs px-4">Selecione o fluxo de operação para iniciar a gestão</p>
-              </div>
+            <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-8 md:p-12">
+              <div className="max-w-6xl w-full text-center space-y-8 sm:space-y-12 py-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="w-16 sm:w-20 h-1 sm:h-1.5 bg-blue-900 rounded-full mx-auto" />
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">
+                    Escolha o seu <span className="text-blue-900">Ambiente</span>
+                  </h2>
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs px-4">Selecione o fluxo de operação para iniciar a gestão</p>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-h-[60vh] md:max-h-none overflow-y-auto md:overflow-visible p-2">
-                {[
-                  { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.', maintenance: false },
-                  { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.', maintenance: false },
-                  { id: 'inventario', label: 'Inventário Pro', icon: Package, color: 'bg-emerald-800', description: 'Controle inteligente de movimentação, saldo e divergências.', maintenance: false },
-                  { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.', maintenance: true }
-                ].map(env => (
-                  <button
-                    key={env.id}
-                    onClick={() => {
-                        if (env.maintenance) return;
-                        setSelectedEnv(env.id as Environment);
-                        if (env.id === 'inventario') {
-                            setActiveTab('inventory_main');
-                        } else {
-                            setActiveTab('calculadora');
-                        }
-                    }}
-                    disabled={env.maintenance}
-                    className={`group bg-white p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-transparent ${env.maintenance ? 'opacity-60 grayscale cursor-not-allowed' : 'hover:border-blue-900 shadow-lg hover:shadow-2xl cursor-pointer'} transition-all duration-300 text-left flex flex-col gap-4 sm:gap-6 relative overflow-hidden shrink-0`}
-                  >
-                    <div className={`absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 ${env.maintenance ? '' : 'group-hover:bg-blue-50'} rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 transition-colors`} />
-                    <div className={`${env.color} w-12 sm:w-16 h-12 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg relative z-10 ${env.maintenance ? '' : 'group-hover:scale-110'} transition-transform`}>
-                      <env.icon size={24} className="sm:size-[30px]" />
-                    </div>
-                    <div className="relative z-10">
-                      <h3 className={`text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight ${env.maintenance ? 'line-through text-slate-400' : ''}`}>{env.label}</h3>
-                      {env.maintenance && (
-                        <p className="text-red-700 text-[10px] sm:text-xs font-black uppercase tracking-widest mt-1 animate-pulse">Em Manutenção</p>
-                      )}
-                      <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1.5 sm:mt-2 leading-relaxed opacity-60">
-                        {env.maintenance ? 'Ambiente restrito: Em manutenção.' : 'Apenas Simulador de Demanda disponível.'}
-                      </p>
-                    </div>
-                    <div className={`flex items-center gap-2 ${env.maintenance ? 'text-slate-400' : 'text-blue-900'} font-bold uppercase tracking-widest text-[9px] sm:text-[10px] mt-2 sm:mt-4 ${env.maintenance ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                      {env.maintenance ? 'Indisponível' : 'Simular Demanda'} <Check size={14} />
-                    </div>
-                  </button>
-                ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-2 max-w-5xl mx-auto">
+                  {[
+                    { id: 'recebimento', label: 'Recebimento', icon: ArrowRightLeft, color: 'bg-blue-900', description: 'Gestão de entrada de mercadorias e conferência inicial.', maintenance: false },
+                    { id: 'separacao', label: 'Separação', icon: Zap, color: 'bg-red-900', description: 'Controle de picking, organização de pedidos e fluxo de saída.', maintenance: false },
+                    { id: 'inventario', label: 'Inventário Pro', icon: Package, color: 'bg-emerald-800', description: 'Controle inteligente de movimentação, saldo e divergências.', maintenance: false },
+                    { id: 'geral', label: 'Gestão Geral', icon: ShieldCheck, color: 'bg-slate-900', description: 'Visão consolidada de todos os ambientes, KPIs globais e análise.', maintenance: true }
+                  ].map(env => (
+                    <button
+                      key={env.id}
+                      onClick={() => {
+                          if (env.maintenance) return;
+                          setSelectedEnv(env.id as Environment);
+                          if (env.id === 'inventario') {
+                              setActiveTab('inventory_main');
+                          } else {
+                              setActiveTab('calculadora');
+                          }
+                      }}
+                      disabled={env.maintenance}
+                      className={`group bg-white p-6 sm:p-8 rounded-[2rem] border-2 border-transparent ${env.maintenance ? 'opacity-60 grayscale cursor-not-allowed' : 'hover:border-blue-900 shadow-md hover:shadow-xl cursor-pointer'} transition-all duration-300 text-left flex flex-col justify-between min-h-[300px] relative overflow-hidden`}
+                    >
+                      <div className={`absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-slate-50 ${env.maintenance ? '' : 'group-hover:bg-blue-50'} rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 transition-colors`} />
+                      
+                      <div className="space-y-4 relative z-10 flex-grow flex flex-col">
+                        <div className={`${env.color} w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${env.maintenance ? '' : 'group-hover:scale-110'} transition-transform shrink-0`}>
+                          <env.icon size={22} className="sm:size-6" />
+                        </div>
+                        
+                        <div className="flex-grow">
+                          <h3 className={`text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight ${env.maintenance ? 'line-through text-slate-400' : ''}`}>{env.label}</h3>
+                          {env.maintenance && (
+                            <p className="text-red-700 text-[10px] sm:text-xs font-black uppercase tracking-widest mt-1 animate-pulse">Em Manutenção</p>
+                          )}
+                          <p className="text-slate-500 text-xs sm:text-sm font-medium mt-2 leading-relaxed opacity-60">
+                            {env.maintenance ? 'Ambiente restrito: Em manutenção.' : env.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className={`flex items-center gap-2 relative z-10 ${env.maintenance ? 'text-slate-400' : 'text-blue-900'} font-bold uppercase tracking-widest text-[9px] sm:text-[10px] mt-4 shrink-0 ${env.maintenance ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                        {env.maintenance ? 'Indisponível' : 'Entrar no Módulo'} <Check size={14} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                
+                <footer className="pt-8 sm:pt-12 text-center border-t border-slate-200">
+                  <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 gap-2 flex items-center justify-center uppercase tracking-[0.3em] sm:tracking-[0.4em]">
+                     Sistema Unificado de Logística <Circle size={4} className="fill-slate-400" /> 2026
+                  </p>
+                </footer>
               </div>
-              
-              <footer className="pt-8 sm:pt-12 text-center border-t border-slate-200">
-                <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 gap-2 flex items-center justify-center uppercase tracking-[0.3em] sm:tracking-[0.4em]">
-                   Sistema Unificado de Logística <Circle size={4} className="fill-slate-400" /> 2026
-                </p>
-              </footer>
             </div>
           </motion.div>
         )}
